@@ -854,14 +854,30 @@
     }
     // Strategy 2: reuse the pot-signed /api/timedtext URL the real player itself
     // requested (captured natively). Rewrite its lang to English and fetch all of it.
-    async function fetchCuesViaCapturedPlayer() {
+    async function fetchCuesViaCapturedPlayer(videoId) {
+      // Provoke YouTube's own player into requesting its pot-signed timedtext by
+      // autoplaying a hidden, MUTED embed with captions forced on. The native
+      // shouldInterceptRequest records that signed URL. Decoupled from the main
+      // player so the app's "wait for cues before playing" gating can't deadlock it.
+      let iframe = null;
+      if (videoId) {
+        try {
+          iframe = document.createElement('iframe');
+          iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:320px;height:180px;opacity:0;border:0;pointer-events:none';
+          iframe.allow = 'autoplay; encrypted-media';
+          iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&cc_load_policy=1&cc_lang_pref=en&playsinline=1`;
+          document.body.appendChild(iframe);
+          dbg('capture: hidden muted embed injected; waiting for its timedtext…');
+        } catch (e) { dbg('capture: iframe inject failed ' + e); }
+      }
       let url = '';
-      for (let i = 0; i < 24; i++) { // poll up to ~12s for the player to request captions
+      for (let i = 0; i < 50; i++) { // poll up to ~25s
         try { url = window.LingoNative.getCapturedTimedtextUrl(); } catch (e) { url = ''; }
         if (url) break;
         await new Promise((r) => setTimeout(r, 500));
       }
-      if (!url) { dbg('capture: player never requested timedtext (no URL in 12s)'); return null; }
+      if (iframe) { try { iframe.remove(); } catch (e) {} }
+      if (!url) { dbg('capture: player never requested timedtext (no URL in 25s)'); return null; }
       dbg('capture: got player URL (' + url.length + ' chars)');
       // Prefer an English variant of the same signed request.
       const enUrl = url.replace(/([?&]lang=)[^&]*/i, '$1en');
@@ -900,7 +916,7 @@
       }
       dbg('direct failed -> trying player-capture…');
       // Direct timedtext was empty/gated — use the player's own signed request.
-      const captured = await fetchCuesViaCapturedPlayer();
+      const captured = await fetchCuesViaCapturedPlayer(videoId);
       if (captured && captured.cues && captured.cues.length) { dbg('CAPTURE OK: ' + captured.cues.length + ' cues'); return captured; }
       // If we positively know there are zero tracks, report no_captions.
       if (direct && direct.error === 'no_captions') { dbg('result: no_captions'); return { error: 'no_captions' }; }
