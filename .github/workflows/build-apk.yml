@@ -30,6 +30,23 @@ jobs:
           unzip -q gradle.zip -d "$HOME/gradle"
           echo "$HOME/gradle/gradle-8.7/bin" >> "$GITHUB_PATH"
 
+      - name: Ensure stable debug keystore
+        run: |
+          if [ ! -f app/debug.keystore ]; then
+            keytool -genkeypair -v -keystore app/debug.keystore \
+              -storepass android -keypass android -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+            echo "GENERATED_KEYSTORE=1" >> "$GITHUB_ENV"
+          fi
+
+      - name: Upload generated keystore (commit it for stable signing)
+        if: env.GENERATED_KEYSTORE == '1'
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-keystore
+          path: app/debug.keystore
+
       - name: Build debug APK
         run: gradle :app:assembleDebug --no-daemon --stacktrace
 

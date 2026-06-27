@@ -41,9 +41,17 @@ class MainActivity : AppCompatActivity() {
     // Latest pot-signed timedtext URL observed from the real player (strategy 2).
     private val capturedTimedText = AtomicReference<String>("")
 
+    // WebView UA: mobile, so the YouTube IFrame player plays inline.
     private val UA =
         "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) " +
             "Chrome/124.0.0.0 Mobile Safari/537.36"
+
+    // Scrape UA: DESKTOP. YouTube only serves the desktop watch page (with
+    // `var ytInitialPlayerResponse = {...}`) to a desktop UA; a mobile UA returns
+    // a differently-structured page we can't parse the caption tracks out of.
+    private val SCRAPE_UA =
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) " +
+            "Chrome/124.0.0.0 Safari/537.36"
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -122,7 +130,7 @@ class MainActivity : AppCompatActivity() {
                         instanceFollowRedirects = true
                         connectTimeout = 15000
                         readTimeout = 20000
-                        setRequestProperty("User-Agent", UA)
+                        setRequestProperty("User-Agent", SCRAPE_UA)
                         setRequestProperty("Accept-Language", "en-US,en;q=0.9")
                         setRequestProperty("Accept-Encoding", "gzip")
                         applyHeaders(this, headersJson)

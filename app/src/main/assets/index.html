@@ -817,14 +817,19 @@
       });
     }
     function extractInlineJson(html, key) {
-      let i = html.indexOf('var ' + key + ' = ');
-      if (i < 0) { i = html.indexOf('"' + key + '":'); if (i < 0) return null; i = html.indexOf('{', i); }
-      else { i += ('var ' + key + ' = ').length; }
-      let d = 0;
-      for (let j = i; j < html.length; j++) {
-        const c = html[j];
-        if (c === '{') d++;
-        else if (c === '}') { d--; if (d === 0) { try { return JSON.parse(html.slice(i, j + 1)); } catch { return null; } } }
+      const markers = ['var ' + key + ' = ', key + ' = ', '"' + key + '":'];
+      for (const mk of markers) {
+        let i = html.indexOf(mk);
+        if (i < 0) continue;
+        i += mk.length;
+        while (i < html.length && html[i] !== '{') i++;   // skip to opening brace
+        if (i >= html.length) continue;
+        let d = 0;
+        for (let j = i; j < html.length; j++) {
+          const c = html[j];
+          if (c === '{') d++;
+          else if (c === '}') { d--; if (d === 0) { try { return JSON.parse(html.slice(i, j + 1)); } catch { break; } } }
+        }
       }
       return null;
     }
