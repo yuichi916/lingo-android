@@ -896,19 +896,20 @@
         return null;
       }
       dbg('capture: got player URL (' + url.length + ' chars)');
-      // Prefer an English variant of the same signed request.
-      const enUrl = url.replace(/([?&]lang=)[^&]*/i, '$1en');
-      let r = await nativeHttpGet(enUrl);
-      dbg('capture: en fetch status=' + r.status + ' bytes=' + (r.body ? r.body.length : 0));
-      if (!r.ok || !r.body || r.body.length < 20) r = await nativeHttpGet(url); // fall back to as-captured
-      if (!r.ok || !r.body) return null;
+      // The player requests fmt=json3 (JSON); strip fmt so timedtext returns the
+      // <transcript><text> XML our parser handles. (Verified: same URL, fmt removed
+      // -> 200 + parseable XML.) The captured URL is already the en track the
+      // player selected, and carries the signing params (ei/xoaf/…) the bare
+      // watch-page baseUrl lacked — which is why direct returned empty.
+      const xmlUrl = url.replace(/&fmt=[^&]*/i, '').replace(/\?fmt=[^&]*&?/i, '?');
+      let r = await nativeHttpGet(xmlUrl);
+      dbg('capture: fetch status=' + r.status + ' bytes=' + (r.body ? r.body.length : 0));
+      if (!r.ok || !r.body || r.body.length < 20) return null;
       const raw = parseTimedTextXml(r.body);
+      dbg('capture: parsed ' + raw.length + ' cues');
       if (!raw.length) return null;
-      const srcLang = (/[?&]lang=en/i.test(enUrl) || /[?&]lang=([^&]*)/i.exec(url)?.[1] || 'en').split('-')[0].replace(/^a\./, '');
-      const isEn = srcLang === 'en', isJa = srcLang === 'ja';
-      const cues = raw.map((c) => ({ start: c.start, end: c.end,
-        en: isEn || !isJa ? c.text : '', ja: isJa ? c.text : '' }));
-      return { cues, srcLang };
+      const cues = raw.map((c) => ({ start: c.start, end: c.end, en: c.text, ja: '' }));
+      return { cues, srcLang: 'en' };
     }
     // Full native caption path: direct watch-page -> timedtext, then player-capture.
     async function fetchCuesViaNative(videoId) {
