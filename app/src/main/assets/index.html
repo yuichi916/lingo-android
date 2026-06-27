@@ -860,14 +860,33 @@
       // for that captured URL.
       dbg('capture: waiting for main player timedtext…');
       let url = '';
+      let trackPicked = false;
       for (let i = 0; i < 50; i++) { // poll up to ~25s
         try { url = window.LingoNative.getCapturedTimedtextUrl(); } catch (e) { url = ''; }
         if (url) break;
+        // The captions.js module loads async; keep (re)selecting a caption track
+        // once it's available so the player actually fetches its timedtext.
+        if (i % 2 === 0) {
+          try {
+            player.loadModule('captions'); player.loadModule('cc');
+            let tl = null;
+            try { tl = player.getOption('captions', 'tracklist'); } catch (e) {}
+            if ((!tl || !tl.length)) { try { tl = player.getOption('cc', 'tracklist'); } catch (e) {} }
+            if (tl && tl.length) {
+              if (!trackPicked) { dbg('  cc tracklist=' + tl.length + ' -> selecting'); trackPicked = true; }
+              const en = tl.find((t) => /^en/i.test(t.languageCode || '')) || tl[0];
+              try { player.setOption('captions', 'track', en); } catch (e) {}
+              try { player.setOption('cc', 'track', en); } catch (e) {}
+            } else {
+              try { player.setOption('captions', 'track', { languageCode: 'en' }); } catch (e) {}
+            }
+          } catch (e) {}
+        }
         if (i === 6 || i === 16 || i === 30) { // ~3s, 8s, 15s probes
           let st = '?', t = '?';
           try { st = player && player.getPlayerState ? player.getPlayerState() : '?'; } catch (e) {}
           try { t = player && player.getCurrentTime ? player.getCurrentTime().toFixed(1) : '?'; } catch (e) {}
-          dbg('  probe: playerState=' + st + ' t=' + t + 's (1=playing)');
+          dbg('  probe: playerState=' + st + ' t=' + t + 's cc=' + trackPicked);
         }
         await new Promise((r) => setTimeout(r, 500));
       }
