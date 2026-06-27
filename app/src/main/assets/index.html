@@ -1,0 +1,1664 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>lingo — YouTube動画で英語×日本語字幕リスニング学習</title>
+  <meta name="description" content="YouTube動画を貼るだけ・検索するだけで、英語字幕と日本語訳を同時に表示。読み終わった単語や行が自動で消えてリスニングに集中できる無料の英語学習ツールです。" />
+  <meta name="keywords" content="英語学習,リスニング,YouTube,英語字幕,日本語訳,二言語字幕,シャドーイング,英語リスニング,無料,lingo" />
+  <meta name="author" content="yuichi916 / Views Engineer" />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+  <meta name="theme-color" content="#0b0d11" />
+  <link rel="canonical" href="https://yuichi916.github.io/lingo.html" />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Views Engineer" />
+  <meta property="og:title" content="lingo — YouTube動画で英語×日本語字幕リスニング学習" />
+  <meta property="og:description" content="YouTube動画を貼るだけで英語字幕＋日本語訳を同期表示。読み終わった部分が自動で消える、リスニング学習向けの無料ツール。" />
+  <meta property="og:url" content="https://yuichi916.github.io/lingo.html" />
+  <meta property="og:image" content="https://yuichi916.github.io/assets/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:locale" content="ja_JP" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@ZundamonAILab" />
+  <meta name="twitter:creator" content="@ViewsEngineer" />
+  <meta name="twitter:title" content="lingo — YouTube動画で英語×日本語字幕リスニング学習" />
+  <meta name="twitter:description" content="YouTube動画を貼るだけで英語字幕＋日本語訳を同期表示。読み終わった部分が自動で消える無料の英語学習ツール。" />
+  <meta name="twitter:image" content="https://yuichi916.github.io/assets/og-image.png" />
+  <link rel="icon" href="favicon.svg" />
+  <link rel="preconnect" href="https://www.youtube.com" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "lingo",
+    "url": "https://yuichi916.github.io/lingo.html",
+    "applicationCategory": "EducationalApplication",
+    "operatingSystem": "Web",
+    "inLanguage": "ja",
+    "description": "YouTube動画の英語字幕と日本語訳を同期表示し、読み終わった単語・行を自動で消してリスニング学習を助ける無料のWebアプリ。",
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "JPY" },
+    "author": { "@type": "Person", "name": "yuichi916 / Views Engineer" }
+  }
+  </script>
+  <style>
+    :root {
+      --bg: #0b0d11;
+      --fg: #e6e8ec;
+      --dim: #9aa3b2;
+      --accent: #6ea8ff;
+      --error: #ff6b6b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px 64px;
+    }
+    h1 {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0 0 16px;
+      color: var(--dim);
+      letter-spacing: 0.04em;
+    }
+    h1 .accent { color: var(--accent); }
+    .input-row {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+      max-width: 960px;
+      margin-bottom: 20px;
+    }
+    .input-row input {
+      flex: 1;
+      padding: 10px 14px;
+      background: #1a1d24;
+      border: 1px solid #2a2f3a;
+      border-radius: 8px;
+      color: var(--fg);
+      font-size: 15px;
+    }
+    .input-row select {
+      padding: 10px 12px;
+      background: #1a1d24;
+      border: 1px solid #2a2f3a;
+      border-radius: 8px;
+      color: var(--fg);
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .input-row button {
+      padding: 10px 18px;
+      background: var(--accent);
+      color: #0b0d11;
+      border: 0;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .input-row button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    #player-wrap {
+      width: 100%;
+      max-width: 960px;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    #player-wrap iframe { width: 100%; height: 100%; border: 0; }
+    #player-wrap.hidden { display: none; }
+    #results {
+      width: 100%;
+      max-width: 960px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    @media (max-width: 720px) { #results { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 440px) { #results { grid-template-columns: 1fr; } }
+    #results.hidden { display: none; }
+    .result-card {
+      background: #1a1d24;
+      border: 1px solid #2a2f3a;
+      border-radius: 10px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.15s, border-color 0.15s;
+      display: flex;
+      flex-direction: column;
+    }
+    .result-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+    .result-thumb {
+      position: relative;
+      aspect-ratio: 16 / 9;
+      background: #000;
+      overflow: hidden;
+    }
+    .result-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .result-duration {
+      position: absolute;
+      bottom: 6px;
+      right: 6px;
+      background: rgba(0,0,0,0.8);
+      color: #fff;
+      font-size: 11px;
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-weight: 600;
+    }
+    .result-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 4px; }
+    .result-title {
+      color: var(--fg);
+      font-size: 14px;
+      font-weight: 600;
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .result-meta { color: var(--dim); font-size: 12px; }
+    #subtitles {
+      width: 100%;
+      max-width: 960px;
+      min-height: 96px;
+      padding: 20px 8px;
+      text-align: center;
+    }
+    #sub-en {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.3;
+      color: var(--fg);
+      white-space: pre-line;
+    }
+    #sub-ja {
+      font-size: 20px;
+      line-height: 1.4;
+      color: var(--dim);
+      margin-top: 8px;
+      white-space: pre-line;
+    }
+    .ka-past { display: none; }
+    .ka-current {
+      color: var(--accent);
+      background: rgba(110, 168, 255, 0.18);
+      border-radius: 4px;
+      padding: 0 2px;
+    }
+    .ka-current-plain { color: inherit; }
+    .ka-pending { color: var(--dim); opacity: 0.55; font-weight: 400; font-size: 0.8em; }
+    #sub-en .w { cursor: pointer; }
+    #sub-en .w:hover { text-decoration: underline; text-decoration-style: dotted; text-underline-offset: 4px; }
+    #sub-hint { color: var(--dim); font-size: 11px; opacity: 0.6; margin-top: 10px; }
+    #dict-popup {
+      position: fixed;
+      left: 50%;
+      bottom: 96px;
+      transform: translateX(-50%);
+      width: min(440px, 92vw);
+      background: #161a22;
+      border: 1px solid #343b49;
+      border-radius: 12px;
+      padding: 16px 18px 14px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.55);
+      z-index: 50;
+      text-align: left;
+    }
+    #dict-popup.hidden { display: none; }
+    #dict-close {
+      position: absolute; top: 8px; right: 10px;
+      background: none; border: 0; color: var(--dim); font-size: 16px; cursor: pointer;
+    }
+    #dict-word { font-size: 22px; font-weight: 700; color: var(--fg); }
+    #dict-phon { color: var(--accent); font-size: 14px; margin-top: 2px; }
+    #dict-ja { color: var(--fg); font-size: 17px; margin-top: 10px; }
+    #dict-def { color: var(--dim); font-size: 13px; line-height: 1.5; margin-top: 8px; }
+    #dict-save { margin-top: 14px; }
+    #dict-save.saved { background: rgba(110,168,255,0.18); border-color: var(--accent); color: var(--accent); }
+    #vocab-panel {
+      position: fixed;
+      right: 16px;
+      bottom: 16px;
+      width: min(360px, 92vw);
+      max-height: 70vh;
+      overflow-y: auto;
+      background: #161a22;
+      border: 1px solid #343b49;
+      border-radius: 12px;
+      padding: 14px 16px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.55);
+      z-index: 49;
+      text-align: left;
+    }
+    #vocab-panel.hidden { display: none; }
+    #vocab-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; color: var(--fg); font-weight: 600; }
+    .vocab-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 7px 0; border-top: 1px solid #2a2f3a; }
+    .vocab-item .vw { color: var(--fg); font-weight: 600; }
+    .vocab-item .vj { color: var(--dim); font-size: 13px; }
+    .vocab-item .vdel { background: none; border: 0; color: var(--dim); cursor: pointer; font-size: 14px; }
+    .vocab-item .vdel:hover { color: var(--error); }
+    #vocab-empty { color: var(--dim); font-size: 13px; }
+    #sub-en .ka-future { color: var(--fg); }
+    #sub-ja .ka-future { color: var(--dim); }
+    .toggle-btn {
+      padding: 6px 12px;
+      background: #1a1d24;
+      border: 1px solid #2a2f3a;
+      border-radius: 6px;
+      color: var(--dim);
+      font-size: 13px;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .toggle-btn.on {
+      background: rgba(110, 168, 255, 0.18);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    #controls-row {
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      max-width: 960px;
+      margin-top: 10px;
+      padding: 6px 8px;
+      font-size: 13px;
+      color: var(--dim);
+    }
+    .control-group { display: flex; align-items: center; gap: 6px; }
+    .control-label { color: var(--dim); margin-right: 2px; }
+    .seg {
+      display: inline-flex;
+      border: 1px solid #2a2f3a;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .seg .seg-btn {
+      padding: 6px 12px;
+      background: #1a1d24;
+      border: 0;
+      color: var(--dim);
+      font-size: 13px;
+      cursor: pointer;
+      border-right: 1px solid #2a2f3a;
+    }
+    .seg .seg-btn:last-child { border-right: 0; }
+    .seg .seg-btn.active {
+      background: rgba(110, 168, 255, 0.18);
+      color: var(--accent);
+    }
+    #status {
+      margin-top: 12px;
+      color: var(--dim);
+      font-size: 14px;
+      min-height: 20px;
+    }
+    #status.error { color: var(--error); }
+    #progress {
+      width: 100%;
+      max-width: 960px;
+      height: 6px;
+      margin-top: 14px;
+      background: #1a1d24;
+      border: 1px solid #2a2f3a;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    #progress.hidden { display: none; }
+    #progress-bar {
+      height: 100%;
+      width: 0;
+      background: var(--accent);
+      border-radius: 999px;
+      transition: width 0.25s ease;
+    }
+    #progress.indeterminate #progress-bar {
+      width: 40%;
+      transition: none;
+      animation: lingo-indet 1.1s ease-in-out infinite;
+    }
+    @keyframes lingo-indet {
+      0%   { margin-left: -42%; }
+      100% { margin-left: 100%; }
+    }
+    .topbar {
+      width: 100%;
+      max-width: 960px;
+      margin-bottom: 10px;
+    }
+    .home-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--dim);
+      text-decoration: none;
+      font-size: 13px;
+      padding: 4px 0;
+    }
+    .home-link:hover { color: var(--accent); }
+    .intro {
+      width: 100%;
+      max-width: 960px;
+      margin: -4px 0 18px;
+      color: var(--dim);
+      font-size: 14px;
+      line-height: 1.7;
+      text-align: center;
+    }
+    .intro b { color: var(--fg); font-weight: 600; }
+    #helper-hint, #helper-ok {
+      width: 100%; max-width: 960px; margin: -6px 0 14px;
+      font-size: 13px; line-height: 1.6; text-align: center;
+      padding: 9px 12px; border-radius: 8px;
+    }
+    #helper-hint { background: rgba(110,168,255,0.10); border: 1px solid #2a3a5a; color: var(--dim); }
+    #helper-ok { background: rgba(110,168,255,0.10); border: 1px solid #34507e; color: var(--accent); }
+    #helper-hint.hidden, #helper-ok.hidden { display: none; }
+    #helper-hint a { color: var(--accent); font-weight: 600; }
+    #helper-hint .dim { color: var(--dim); font-size: 12px; }
+    #helper-hint .dim a { color: var(--dim); text-decoration: underline; font-weight: 400; }
+    .about {
+      width: 100%;
+      max-width: 960px;
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid #2a2f3a;
+      color: var(--dim);
+      font-size: 14px;
+      line-height: 1.8;
+    }
+    .about h2 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--fg);
+      margin: 20px 0 8px;
+      letter-spacing: 0.02em;
+    }
+    .about h2:first-child { margin-top: 0; }
+    .about ol, .about ul { margin: 0; padding-left: 1.3em; }
+    .about li { margin: 4px 0; }
+    .about .accent { color: var(--accent); }
+
+    /* ---- Touch / tap polish (all sizes) ---- */
+    button, .seg-btn, .toggle-btn, .result-card, #sub-en .w, .input-row select, .input-row input {
+      -webkit-tap-highlight-color: transparent;
+    }
+    .toggle-btn, .seg-btn, .input-row button, .input-row select, .result-card {
+      touch-action: manipulation;
+    }
+    .toggle-btn:active, .seg .seg-btn:active, .input-row button:active { filter: brightness(1.35); }
+    #sub-en .w:active { color: var(--accent); }
+
+    /* ---- Mobile layout ---- */
+    @media (max-width: 600px) {
+      body { padding: 14px 12px 56px; }
+      h1 { font-size: 15px; text-align: center; max-width: 100%; line-height: 1.4; }
+      .intro { font-size: 13px; margin-bottom: 14px; }
+
+      /* Stack input / sort / button vertically — full-width, big tap targets,
+         no horizontal-overflow surprises. */
+      .input-row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+      .input-row input { width: 100%; font-size: 16px; padding: 13px 14px; } /* 16px stops iOS focus-zoom */
+      .input-row select { width: 100%; font-size: 16px; padding: 12px 12px; }
+      .input-row button { width: 100%; font-size: 16px; padding: 13px 14px; }
+
+      /* Keep the video pinned while reading subtitles/controls below it.
+         (Stay within the content width — going full-bleed caused horizontal
+         overflow that pushed the search button off-screen.) */
+      #player-wrap { position: sticky; top: 8px; z-index: 5; }
+
+      /* Each control group on its own full-width, centered row — never clipped */
+      #controls-row { gap: 9px; margin-top: 14px; padding: 8px 0; }
+      .control-group { width: 100%; justify-content: center; flex-wrap: wrap; gap: 6px; }
+      .control-label { font-size: 13px; }
+      .toggle-btn, .seg .seg-btn { padding: 8px 13px; font-size: 13px; } /* bigger tap targets */
+
+      #subtitles { padding: 16px 6px; min-height: 84px; }
+      #sub-en { font-size: 23px; }
+      #sub-ja { font-size: 16px; }
+      #sub-hint { font-size: 11px; }
+
+      #dict-popup { bottom: 14px; width: calc(100vw - 20px); padding: 16px 16px 14px; }
+      #dict-word { font-size: 21px; }
+      #vocab-panel { right: 10px; left: 10px; bottom: 10px; width: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar"><a class="home-link" href="index.html">← ホームに戻る</a></div>
+  <h1>🌍 <span class="accent">lingo</span> — YouTube English × 日本語</h1>
+  <p class="intro">
+    YouTube動画の<b>英語字幕</b>と<b>日本語訳</b>を同時に表示するリスニング学習ツールです。<br>
+    読み終わった単語・行は自動で消えるので、今聞いている部分だけに集中できます。
+  </p>
+  <div id="helper-hint" class="hidden">
+    💡 一部の動画で字幕が出ないときは、<b>字幕ヘルパー（無料）</b>を入れると全動画で出せます →
+    <a href="_userscript/lingo-helper.user.js" id="helper-link">字幕ヘルパーを導入</a>
+    <span class="dim">（先に <a href="https://violentmonkey.github.io/" target="_blank" rel="noopener">Violentmonkey</a> / Tampermonkey が必要）</span>
+  </div>
+  <div id="helper-ok" class="hidden">✅ 字幕ヘルパー有効 — 全動画で字幕取得できます</div>
+  <div class="input-row">
+    <input id="url-input" type="text" placeholder="YouTube URL or 検索キーワード" autocomplete="off" />
+    <select id="sort-select" title="検索ソート (URLのときは無視)">
+      <option value="relevance">関連度順</option>
+      <option value="date">新着順</option>
+      <option value="views">再生数順</option>
+      <option value="rating">高評価順</option>
+    </select>
+    <button id="load-btn">読み込む / 検索</button>
+  </div>
+  <div id="player-wrap"></div>
+  <div id="controls-row">
+    <div class="control-group">
+      <span class="control-label">強調:</span>
+      <button id="hl-toggle" class="toggle-btn" title="今読んでいる箇所をハイライト">OFF</button>
+    </div>
+    <div class="control-group">
+      <span class="control-label">消去:</span>
+      <div class="seg" id="hide-mode">
+        <button class="seg-btn" data-hide="word" title="読み終わった単語から消す">単語ずつ</button>
+        <button class="seg-btn" data-hide="line" title="読了したら行ごと消す">行ごと</button>
+      </div>
+    </div>
+    <div class="control-group">
+      <span class="control-label">速度:</span>
+      <div class="seg" id="speed-seg">
+        <button class="seg-btn" data-rate="0.5">0.5x</button>
+        <button class="seg-btn" data-rate="0.75">0.75x</button>
+        <button class="seg-btn" data-rate="1" title="標準速度">1x</button>
+        <button class="seg-btn" data-rate="1.25">1.25x</button>
+      </div>
+    </div>
+    <div class="control-group">
+      <span class="control-label">区間反復:</span>
+      <button id="ab-a" class="toggle-btn" title="開始点Aをセット">A</button>
+      <button id="ab-b" class="toggle-btn" title="終了点Bをセット">B</button>
+      <button id="ab-line" class="toggle-btn" title="今の字幕の行をループ再生">🔁 この行</button>
+      <button id="ab-clear" class="toggle-btn" title="区間反復を解除" style="display:none;">✕</button>
+      <span id="ab-status" style="color:var(--accent);font-size:12px;"></span>
+    </div>
+    <div class="control-group">
+      <button id="vocab-btn" class="toggle-btn" title="保存した単語の一覧">📒 単語帳 (0)</button>
+    </div>
+  </div>
+  <div id="results" class="hidden"></div>
+  <div id="subtitles">
+    <div id="sub-en"></div>
+    <div id="sub-ja"></div>
+    <div id="sub-hint">英単語をタップ／クリックすると意味が出ます</div>
+  </div>
+  <div id="dict-popup" class="hidden">
+    <button id="dict-close" title="閉じる">✕</button>
+    <div id="dict-word"></div>
+    <div id="dict-phon"></div>
+    <div id="dict-ja"></div>
+    <div id="dict-def"></div>
+    <button id="dict-save" class="toggle-btn">★ 単語帳に保存</button>
+  </div>
+  <div id="vocab-panel" class="hidden">
+    <div id="vocab-head">
+      <span>📒 単語帳</span>
+      <button id="vocab-close" class="toggle-btn">閉じる</button>
+    </div>
+    <div id="vocab-list"></div>
+  </div>
+  <div id="progress" class="hidden"><div id="progress-bar"></div></div>
+  <div id="status"></div>
+  <section class="about">
+    <h2>使い方</h2>
+    <ol>
+      <li>YouTubeの<b>URL</b>を貼り付けるか、<b>キーワード</b>で動画を検索します。</li>
+      <li>英語字幕のある動画を選ぶと、英語と日本語訳が同期して流れます。</li>
+      <li><span class="accent">強調</span>＝今読んでいる箇所をハイライト、<span class="accent">消去</span>＝「単語ずつ」か「行ごと」で読み終わった部分を消す表示を切り替えられます。</li>
+    </ol>
+    <h2>学習に役立つ機能</h2>
+    <ul>
+      <li><b>速度</b>：0.5〜1.25倍で再生。聞き取れない箇所はゆっくりに。</li>
+      <li><b>区間反復（A/B）</b>：<span class="accent">A</span>で開始点、<span class="accent">B</span>で終了点をセットすると、その区間をループ再生。<span class="accent">🔁 この行</span>で今の字幕の一文だけを繰り返せます（シャドーイングに最適）。</li>
+      <li><b>単語辞書</b>：英字幕の<b>単語をクリック</b>すると、発音記号・日本語訳・英英定義がポップアップ。気になった語は<span class="accent">★単語帳に保存</span>。</li>
+      <li><b>単語帳</b>：保存した単語を<span class="accent">📒 単語帳</span>からいつでも見返せます（ブラウザに保存）。</li>
+    </ul>
+    <h2>lingo とは</h2>
+    <p>
+      lingo は、YouTube動画を教材にして英語のリスニングを鍛えるための無料Webツールです。
+      英語字幕とその日本語訳を並べて表示し、話者が読み終えた行は自動で消えていくため、
+      字幕を「目で追う」のではなく「耳で聞く」練習に集中できます。
+      日本語訳が無い動画でも、自動翻訳で逐次補完します。インストール不要・ログイン不要、ブラウザだけで使えます。
+    </p>
+    <h2>こんな人に</h2>
+    <ul>
+      <li>洋画・海外ニュース・英語スピーチで<b>リスニング</b>を鍛えたい</li>
+      <li>英語と日本語を<b>同時に確認</b>しながら学びたい</li>
+      <li>字幕に頼りすぎず<b>シャドーイング</b>の練習をしたい</li>
+    </ul>
+    <p style="margin-top:24px;"><a class="home-link" href="index.html">← ホーム（Views Engineer）に戻る</a></p>
+  </section>
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script>
+    (function () {
+      const ID_RE = /^[A-Za-z0-9_-]{11}$/;
+
+      function extractVideoId(input) {
+        if (!input) return null;
+        const trimmed = input.trim();
+        if (ID_RE.test(trimmed)) return trimmed;
+        try {
+          const u = new URL(trimmed);
+          if (u.hostname === 'youtu.be') {
+            const id = u.pathname.slice(1);
+            return ID_RE.test(id) ? id : null;
+          }
+          if (u.hostname.endsWith('youtube.com')) {
+            const v = u.searchParams.get('v');
+            if (v && ID_RE.test(v)) return v;
+            const m = u.pathname.match(/^\/(?:shorts|embed|live)\/([A-Za-z0-9_-]{11})/);
+            if (m) return m[1];
+          }
+        } catch (e) {
+          return null;
+        }
+        return null;
+      }
+
+      function findActiveCue(cues, t) {
+        if (!cues || !cues.length) return null;
+        let lo = 0, hi = cues.length - 1;
+        while (lo <= hi) {
+          const mid = (lo + hi) >> 1;
+          const c = cues[mid];
+          if (t < c.start) hi = mid - 1;
+          else if (t >= c.end) lo = mid + 1;
+          else return c;
+        }
+        return null;
+      }
+
+      function findActiveCues(cues, t) {
+        if (!cues || !cues.length) return [];
+        const out = [];
+        for (let i = 0; i < cues.length; i++) {
+          const c = cues[i];
+          const endT = c.displayEnd != null ? c.displayEnd : c.end;
+          if (c.start <= t && t < endT) out.push(c);
+          else if (c.start > t) break;
+        }
+        return out;
+      }
+
+      function computeDisplayEnds(cs) {
+        for (let i = 0; i < cs.length; i++) {
+          // Look for the next cue that STARTS after this one's natural end.
+          // That's the cue that should take over the line; extend until then.
+          let nextStart = Infinity;
+          for (let j = i + 1; j < cs.length; j++) {
+            if (cs[j].start > cs[i].end) { nextStart = cs[j].start; break; }
+          }
+          cs[i].displayEnd = nextStart === Infinity ? cs[i].end + 5 : nextStart;
+        }
+      }
+
+      if (window.location.search.includes('selftest=1')) {
+        console.assert(extractVideoId('https://youtu.be/dQw4w9WgXcQ') === 'dQw4w9WgXcQ', 'youtu.be');
+        console.assert(extractVideoId('https://www.youtube.com/watch?v=dQw4w9WgXcQ') === 'dQw4w9WgXcQ', 'watch');
+        console.assert(extractVideoId('https://www.youtube.com/shorts/dQw4w9WgXcQ') === 'dQw4w9WgXcQ', 'shorts');
+        console.assert(extractVideoId('not-a-url') === null, 'invalid');
+        const cues = [{start:0,end:2,en:'a'},{start:2,end:4,en:'b'},{start:5,end:7,en:'c'}];
+        console.assert(findActiveCue(cues, 1) && findActiveCue(cues, 1).en === 'a', 'cue@1');
+        console.assert(findActiveCue(cues, 3) && findActiveCue(cues, 3).en === 'b', 'cue@3');
+        console.assert(findActiveCue(cues, 4.5) === null, 'gap@4.5');
+        console.assert(findActiveCue(cues, 6) && findActiveCue(cues, 6).en === 'c', 'cue@6');
+        const ov = [{start:0,end:5,en:'a'},{start:2,end:6,en:'b'},{start:4,end:8,en:'c'}];
+        const at3 = findActiveCues(ov, 3); console.assert(at3.length === 2 && at3[0].en==='a' && at3[1].en==='b', 'overlap@3');
+        const at5 = findActiveCues(ov, 5); console.assert(at5.length === 2 && at5[0].en==='b' && at5[1].en==='c', 'overlap@5');
+        // displayEnd bridging
+        const bridge = [{start:0,end:2,en:'a'},{start:5,end:7,en:'b'}];
+        computeDisplayEnds(bridge);
+        console.assert(bridge[0].displayEnd === 5, 'bridge a.displayEnd=5');
+        console.assert(bridge[1].displayEnd === 12, 'bridge b.displayEnd=12 (last cue +5)');
+        const inGap = findActiveCues(bridge, 3);
+        console.assert(inGap.length === 1 && inGap[0].en === 'a', 'gap bridged');
+        // overlapping cues — A extends past B because B starts before A ends
+        const ov2 = [{start:1,end:10,en:'A'},{start:3,end:5,en:'B'},{start:12,end:14,en:'C'}];
+        computeDisplayEnds(ov2);
+        console.assert(ov2[0].displayEnd === 12, 'A extends to C.start=12');
+        console.assert(ov2[1].displayEnd === 12, 'B extends to C.start=12');
+        console.log('lingo selftest passed');
+      }
+
+      window.__lingo = { extractVideoId, findActiveCue, findActiveCues, computeDisplayEnds };
+    })();
+  </script>
+  <script>
+    const WORKER_URL = 'https://lingo-transcript.yuichi916.workers.dev';
+    // Google Apps Script caption proxy (Google IP). Zero-install fallback — works
+    // for some (popular) videos. The userscript helper covers everything.
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbyeueY3xTw7CkiZ2SP-zJdDWzloDI4gYcunlLZenyF6IV8aPKjHpMrZ5oHPUuyKHCmj/exec';
+    const { extractVideoId, findActiveCue, findActiveCues, computeDisplayEnds } = window.__lingo;
+
+    // ---- Captions via Google Apps Script + browser-side timedtext ----
+    // The Worker's Cloudflare IP is permanently blocked by YouTube for the caption
+    // endpoint. So: GAS returns the caption track list (signed baseUrls) from
+    // Google's IP, then the browser fetches the caption text directly from
+    // timedtext (CORS-enabled, the user's own un-blocked IP).
+    function jsonp(url, timeoutMs) {
+      return new Promise((resolve, reject) => {
+        const cb = '__lingo_cb_' + Math.random().toString(36).slice(2);
+        const s = document.createElement('script');
+        let done = false;
+        const cleanup = () => { try { delete window[cb]; } catch (e) { window[cb] = undefined; } s.remove(); };
+        window[cb] = (data) => { done = true; cleanup(); resolve(data); };
+        s.onerror = () => { if (!done) { cleanup(); reject(new Error('jsonp error')); } };
+        s.src = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'callback=' + cb;
+        document.head.appendChild(s);
+        setTimeout(() => { if (!done) { cleanup(); reject(new Error('jsonp timeout')); } }, timeoutMs || 15000);
+      });
+    }
+    function pickCaptionTrack(tracks) {
+      const enManual = tracks.find((t) => /^en/i.test(t.lang) && t.kind !== 'asr');
+      if (enManual) return { track: enManual, srcLang: 'en' };
+      const enAsr = tracks.find((t) => /^en/i.test(t.lang) && t.kind === 'asr');
+      if (enAsr) return { track: enAsr, srcLang: 'en' };
+      const jaT = tracks.find((t) => /^ja/i.test(t.lang));
+      if (jaT) return { track: jaT, srcLang: 'ja' };
+      const any = tracks.find((t) => t.kind !== 'asr') || tracks[0];
+      return any ? { track: any, srcLang: (any.lang || 'en').split('-')[0].replace(/^a\./, '') } : null;
+    }
+    function decodeEntities(s) {
+      return s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n));
+    }
+    function parseTimedTextXml(xml) {
+      const cues = [];
+      const pRe = /<p\s+t="(\d+)"\s+d="(\d+)"[^>]*>([\s\S]*?)<\/p>/g;
+      let m;
+      while ((m = pRe.exec(xml)) !== null) {
+        const start = +m[1] / 1000, dur = +m[2] / 1000;
+        let text = '';
+        const sRe = /<s[^>]*>([^<]*)<\/s>/g; let sm;
+        while ((sm = sRe.exec(m[3])) !== null) text += sm[1];
+        if (!text) text = m[3].replace(/<[^>]+>/g, '');
+        text = decodeEntities(text.replace(/\s+/g, ' ').trim());
+        if (text) cues.push({ start, end: start + dur, text });
+      }
+      if (cues.length) return cues;
+      const tRe = /<text\s+start="([^"]+)"\s+dur="([^"]+)"[^>]*>([\s\S]*?)<\/text>/g;
+      while ((m = tRe.exec(xml)) !== null) {
+        const start = parseFloat(m[1]), dur = parseFloat(m[2]);
+        const text = decodeEntities(m[3].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim());
+        if (text) cues.push({ start, end: start + dur, text });
+      }
+      return cues;
+    }
+    // Given a caption track list ({lang,kind,baseUrl}), pick the best track, fetch
+    // the timedtext XML directly from the browser (CORS-enabled, residential IP),
+    // and build {cues, srcLang}. { error:'no_captions' } if none, null on failure.
+    async function buildCuesFromTracks(tracks) {
+      if (!Array.isArray(tracks)) return null;
+      if (!tracks.length) return { error: 'no_captions' };
+      const pick = pickCaptionTrack(tracks);
+      if (!pick || !pick.track.baseUrl) return { error: 'no_captions' };
+      let xml;
+      try {
+        const res = await fetch(pick.track.baseUrl);
+        if (!res.ok) return null;
+        xml = await res.text();
+      } catch (e) { return null; }
+      const raw = parseTimedTextXml(xml);
+      if (!raw.length) return null;
+      const isEn = pick.srcLang === 'en', isJa = pick.srcLang === 'ja';
+      const cues = raw.map((c) => ({
+        start: c.start, end: c.end,
+        en: isEn || (!isJa) ? c.text : '',   // non-en/ja source: use as the base line
+        ja: isJa ? c.text : '',
+      }));
+      return { cues, srcLang: pick.srcLang };
+    }
+
+    // Userscript helper (Tampermonkey/Violentmonkey) — fetches the caption track
+    // list from the user's OWN residential IP via GM_xmlhttpRequest (bypasses CORS
+    // and YouTube's datacenter-IP block). Best path: works for every video, free.
+    function helperPresent() {
+      return document.documentElement.getAttribute('data-lingo-helper') === '1';
+    }
+    function getTracksViaHelper(videoId, timeoutMs) {
+      return new Promise((resolve, reject) => {
+        const reqId = 'h' + Math.random().toString(36).slice(2);
+        const onMsg = (e) => {
+          const d = e.data;
+          if (!d || d.type !== 'lingo-helper-res' || d.reqId !== reqId) return;
+          window.removeEventListener('message', onMsg);
+          if (d.error) reject(new Error(d.error)); else resolve(d.tracks || []);
+        };
+        window.addEventListener('message', onMsg);
+        window.postMessage({ type: 'lingo-helper-req', reqId, videoId }, '*');
+        setTimeout(() => { window.removeEventListener('message', onMsg); reject(new Error('helper timeout')); }, timeoutMs || 22000);
+      });
+    }
+    async function fetchCuesViaHelper(videoId) {
+      if (!helperPresent()) return null;
+      let tracks;
+      try { tracks = await getTracksViaHelper(videoId); }
+      catch (e) { return null; }
+      return buildCuesFromTracks(tracks);
+    }
+
+    // GAS proxy (Google IP) — zero-install fallback; works for some (popular) videos.
+    async function fetchCuesViaGAS(videoId) {
+      if (!GAS_URL) return null;
+      let data;
+      try { data = await jsonp(`${GAS_URL}?v=${encodeURIComponent(videoId)}`); }
+      catch (e) { return null; }
+      if (!data || data.error || !Array.isArray(data.tracks)) return null;
+      return buildCuesFromTracks(data.tracks);
+    }
+
+    // ====================================================================
+    // Native Android bridge (LingoNative). Present only inside the APK.
+    // Native HTTP has NO CORS and runs on the device's residential/mobile IP,
+    // so it can fetch YouTube's watch page + timedtext directly — the path that
+    // is blocked from datacenter IPs and forbidden by CORS in a web page.
+    // ====================================================================
+    const IN_APP = typeof window.LingoNative !== 'undefined';
+    const __nativePending = new Map();
+    window.__lingoResolveB64 = function (b64) {
+      let obj;
+      try { obj = JSON.parse(decodeURIComponent(escape(atob(b64)))); } catch (e) { return; }
+      const p = __nativePending.get(obj.reqId);
+      if (!p) return;
+      __nativePending.delete(obj.reqId);
+      p({ ok: obj.ok, status: obj.status, body: obj.body });
+    };
+    function nativeHttpGet(url, headers) {
+      return new Promise((resolve) => {
+        const reqId = 'n' + Math.random().toString(36).slice(2);
+        __nativePending.set(reqId, resolve);
+        try { window.LingoNative.httpGet(url, headers ? JSON.stringify(headers) : '', reqId); }
+        catch (e) { __nativePending.delete(reqId); resolve({ ok: false, status: 0, body: '' }); }
+        setTimeout(() => {
+          if (__nativePending.has(reqId)) { __nativePending.delete(reqId); resolve({ ok: false, status: 0, body: '' }); }
+        }, 25000);
+      });
+    }
+    function extractInlineJson(html, key) {
+      let i = html.indexOf('var ' + key + ' = ');
+      if (i < 0) { i = html.indexOf('"' + key + '":'); if (i < 0) return null; i = html.indexOf('{', i); }
+      else { i += ('var ' + key + ' = ').length; }
+      let d = 0;
+      for (let j = i; j < html.length; j++) {
+        const c = html[j];
+        if (c === '{') d++;
+        else if (c === '}') { d--; if (d === 0) { try { return JSON.parse(html.slice(i, j + 1)); } catch { return null; } } }
+      }
+      return null;
+    }
+    // Build {cues, srcLang} from a YouTube captionTracks array, fetching the
+    // timedtext XML through the NATIVE layer (no CORS, residential IP).
+    async function buildCuesNative(captionTracks) {
+      if (!Array.isArray(captionTracks) || !captionTracks.length) return { error: 'no_captions' };
+      const tracks = captionTracks.map((t) => ({ lang: t.languageCode, kind: t.kind, baseUrl: t.baseUrl }));
+      const pick = pickCaptionTrack(tracks);
+      if (!pick || !pick.track.baseUrl) return { error: 'no_captions' };
+      const r = await nativeHttpGet(pick.track.baseUrl);
+      let xml = r.ok ? r.body : '';
+      if (!xml || xml.length < 20) return null; // empty => likely poToken-gated; caller tries capture
+      const raw = parseTimedTextXml(xml);
+      if (!raw.length) return null;
+      const isEn = pick.srcLang === 'en', isJa = pick.srcLang === 'ja';
+      const cues = raw.map((c) => ({ start: c.start, end: c.end,
+        en: isEn || !isJa ? c.text : '', ja: isJa ? c.text : '' }));
+      return { cues, srcLang: pick.srcLang };
+    }
+    // Strategy 2: reuse the pot-signed /api/timedtext URL the real player itself
+    // requested (captured natively). Rewrite its lang to English and fetch all of it.
+    async function fetchCuesViaCapturedPlayer() {
+      let url = '';
+      for (let i = 0; i < 24; i++) { // poll up to ~12s for the player to request captions
+        try { url = window.LingoNative.getCapturedTimedtextUrl(); } catch (e) { url = ''; }
+        if (url) break;
+        await new Promise((r) => setTimeout(r, 500));
+      }
+      if (!url) return null;
+      // Prefer an English variant of the same signed request.
+      const enUrl = url.replace(/([?&]lang=)[^&]*/i, '$1en');
+      let r = await nativeHttpGet(enUrl);
+      if (!r.ok || !r.body || r.body.length < 20) r = await nativeHttpGet(url); // fall back to as-captured
+      if (!r.ok || !r.body) return null;
+      const raw = parseTimedTextXml(r.body);
+      if (!raw.length) return null;
+      const srcLang = (/[?&]lang=en/i.test(enUrl) || /[?&]lang=([^&]*)/i.exec(url)?.[1] || 'en').split('-')[0].replace(/^a\./, '');
+      const isEn = srcLang === 'en', isJa = srcLang === 'ja';
+      const cues = raw.map((c) => ({ start: c.start, end: c.end,
+        en: isEn || !isJa ? c.text : '', ja: isJa ? c.text : '' }));
+      return { cues, srcLang };
+    }
+    // Full native caption path: direct watch-page -> timedtext, then player-capture.
+    async function fetchCuesViaNative(videoId) {
+      if (!IN_APP) return null;
+      try { window.LingoNative.clearCapturedTimedtext(); } catch (e) {}
+      const watch = await nativeHttpGet(
+        `https://www.youtube.com/watch?v=${videoId}&hl=en&gl=US`,
+        { 'Cookie': 'SOCS=CAI; CONSENT=YES+; PREF=hl=en&gl=US' }
+      );
+      let direct = null;
+      if (watch.ok && watch.body) {
+        const pr = extractInlineJson(watch.body, 'ytInitialPlayerResponse');
+        const tracks = pr && pr.captions && pr.captions.playerCaptionsTracklistRenderer
+          && pr.captions.playerCaptionsTracklistRenderer.captionTracks;
+        if (Array.isArray(tracks)) {
+          direct = await buildCuesNative(tracks);
+          if (direct && direct.cues && direct.cues.length) return direct;
+        }
+      }
+      // Direct timedtext was empty/gated — use the player's own signed request.
+      const captured = await fetchCuesViaCapturedPlayer();
+      if (captured && captured.cues && captured.cues.length) return captured;
+      // If we positively know there are zero tracks, report no_captions.
+      if (direct && direct.error === 'no_captions') return { error: 'no_captions' };
+      return null;
+    }
+
+    // Banner: helper installed → confirm; not installed → how to enable full coverage.
+    (function () {
+      const hint = document.getElementById('helper-hint');
+      const ok = document.getElementById('helper-ok');
+      if (helperPresent()) ok.classList.remove('hidden');
+      else if (hint) hint.classList.remove('hidden');
+    })();
+
+    const urlInput = document.getElementById('url-input');
+    const sortSelect = document.getElementById('sort-select');
+    const hlToggle = document.getElementById('hl-toggle');
+    const loadBtn = document.getElementById('load-btn');
+    const playerWrap = document.getElementById('player-wrap');
+    const resultsEl = document.getElementById('results');
+    const subEn = document.getElementById('sub-en');
+    const subJa = document.getElementById('sub-ja');
+    const statusEl = document.getElementById('status');
+    const progressEl = document.getElementById('progress');
+    const progressBar = document.getElementById('progress-bar');
+
+    // Indeterminate while we don't know how long the fetch will take (transcript
+    // download); determinate once we have a real count (translation backfill).
+    function showProgressIndeterminate() {
+      progressEl.classList.remove('hidden');
+      progressEl.classList.add('indeterminate');
+      progressBar.style.width = '';
+    }
+    function setProgress(frac) {
+      progressEl.classList.remove('hidden', 'indeterminate');
+      progressBar.style.width = Math.max(0, Math.min(1, frac)) * 100 + '%';
+    }
+    function hideProgress() {
+      progressEl.classList.add('hidden');
+      progressEl.classList.remove('indeterminate');
+      progressBar.style.width = '0';
+    }
+
+    let player = null;
+    let cues = [];
+    let pollTimer = null;
+    let autoPlayTriggered = false;
+    let autoPlayTimer = null;
+    let loadSeq = 0; // bumped each load so a stale auto-retry can bail out
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const storedHl = localStorage.getItem('lingo.hl.v2');
+    let highlightMode = storedHl === null ? true : storedHl === '1';
+    applyHighlightToggleUI();
+    hlToggle.addEventListener('click', () => {
+      highlightMode = !highlightMode;
+      localStorage.setItem('lingo.hl.v2', highlightMode ? '1' : '0');
+      applyHighlightToggleUI();
+    });
+    function applyHighlightToggleUI() {
+      hlToggle.classList.toggle('on', highlightMode);
+      hlToggle.textContent = highlightMode ? 'ON' : 'OFF';
+    }
+
+    let hideMode = localStorage.getItem('lingo.hideMode') || 'word';
+    if (hideMode !== 'word' && hideMode !== 'line') hideMode = 'word';
+    function applyHideModeUI() {
+      for (const b of document.querySelectorAll('#hide-mode .seg-btn')) {
+        b.classList.toggle('active', b.dataset.hide === hideMode);
+      }
+    }
+    applyHideModeUI();
+    for (const b of document.querySelectorAll('#hide-mode .seg-btn')) {
+      b.addEventListener('click', () => {
+        hideMode = b.dataset.hide;
+        localStorage.setItem('lingo.hideMode', hideMode);
+        applyHideModeUI();
+      });
+    }
+
+    // ---- Playback speed ----
+    let playbackRate = parseFloat(localStorage.getItem('lingo.rate')) || 1;
+    function applySpeedUI() {
+      for (const b of document.querySelectorAll('#speed-seg .seg-btn')) {
+        b.classList.toggle('active', parseFloat(b.dataset.rate) === playbackRate);
+      }
+    }
+    applySpeedUI();
+    for (const b of document.querySelectorAll('#speed-seg .seg-btn')) {
+      b.addEventListener('click', () => {
+        playbackRate = parseFloat(b.dataset.rate);
+        localStorage.setItem('lingo.rate', String(playbackRate));
+        applySpeedUI();
+        if (player && player.setPlaybackRate) { try { player.setPlaybackRate(playbackRate); } catch (e) {} }
+      });
+    }
+
+    // ---- A/B repeat ----
+    let loopA = null, loopB = null;
+    const abA = document.getElementById('ab-a');
+    const abB = document.getElementById('ab-b');
+    const abLine = document.getElementById('ab-line');
+    const abClear = document.getElementById('ab-clear');
+    const abStatus = document.getElementById('ab-status');
+    function fmtTime(s) { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+    function abActive() { return loopA != null && loopB != null && loopB > loopA; }
+    function updateAbUI() {
+      abA.classList.toggle('on', loopA != null);
+      abB.classList.toggle('on', loopB != null);
+      abClear.style.display = (loopA != null || loopB != null) ? '' : 'none';
+      abStatus.textContent = abActive() ? `${fmtTime(loopA)}→${fmtTime(loopB)} 反復中` : (loopA != null ? `A=${fmtTime(loopA)}` : '');
+    }
+    abA.addEventListener('click', () => { if (!player || !player.getCurrentTime) return; loopA = player.getCurrentTime(); if (loopB != null && loopB <= loopA) loopB = null; updateAbUI(); });
+    abB.addEventListener('click', () => { if (!player || !player.getCurrentTime) return; loopB = player.getCurrentTime(); if (loopA == null) loopA = Math.max(0, loopB - 5); updateAbUI(); });
+    abLine.addEventListener('click', () => {
+      if (!player || !player.getCurrentTime) return;
+      const t = player.getCurrentTime();
+      const c = findActiveCues(cues, t)[0] || cues.find((x) => x.start >= t);
+      if (c) { loopA = c.start; loopB = c.end; try { player.seekTo(loopA, true); player.playVideo(); } catch (e) {} updateAbUI(); }
+    });
+    abClear.addEventListener('click', () => { loopA = loopB = null; updateAbUI(); });
+    updateAbUI();
+
+    // ---- Dictionary popup ----
+    const dictPopup = document.getElementById('dict-popup');
+    const dictWord = document.getElementById('dict-word');
+    const dictPhon = document.getElementById('dict-phon');
+    const dictJa = document.getElementById('dict-ja');
+    const dictDef = document.getElementById('dict-def');
+    const dictSave = document.getElementById('dict-save');
+    const dictClose = document.getElementById('dict-close');
+    const dictCache = new Map();
+    let dictCurrent = null;
+    async function lookupWord(word) {
+      if (dictCache.has(word)) return dictCache.get(word);
+      const [ja, en] = await Promise.all([
+        translateViaMyMemoryDirect([word], 'en', 'ja').then((r) => r[0] || '').catch(() => ''),
+        fetch('https://api.dictionaryapi.dev/api/v2/entries/en/' + encodeURIComponent(word)).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      ]);
+      let phon = '', def = '';
+      if (Array.isArray(en) && en[0]) {
+        const e = en[0];
+        phon = e.phonetic || (e.phonetics && e.phonetics.find((p) => p.text)?.text) || '';
+        const defs = [];
+        for (const m of (e.meanings || [])) {
+          if (m.definitions && m.definitions[0]) defs.push(`(${m.partOfSpeech}) ${m.definitions[0].definition}`);
+          if (defs.length >= 2) break;
+        }
+        def = defs.join('\n');
+      }
+      const info = { word, ja, phon, def };
+      dictCache.set(word, info);
+      return info;
+    }
+    async function showDictPopup(word) {
+      dictCurrent = { word, ja: '' };
+      dictWord.textContent = word;
+      dictPhon.textContent = '';
+      dictJa.textContent = '調べています…';
+      dictDef.textContent = '';
+      updateSaveBtn(word);
+      dictPopup.classList.remove('hidden');
+      const info = await lookupWord(word);
+      if (dictPopup.classList.contains('hidden') || dictWord.textContent !== word) return;
+      dictPhon.textContent = info.phon;
+      dictJa.textContent = info.ja || '(訳が取得できませんでした)';
+      dictDef.textContent = info.def || '';
+      dictCurrent = { word: info.word, ja: info.ja };
+    }
+    // pointerdown (not click): fires the instant the word is pressed, so it works
+    // even while the subtitle is animating and a re-render would otherwise cancel
+    // a click.
+    subEn.addEventListener('pointerdown', (e) => {
+      const el = e.target.closest('.w');
+      if (!el || !el.dataset.w) return;
+      e.preventDefault();
+      if (player && player.pauseVideo) { try { player.pauseVideo(); } catch (e) {} }
+      showDictPopup(el.dataset.w);
+    });
+    dictClose.addEventListener('click', () => dictPopup.classList.add('hidden'));
+
+    // ---- Vocabulary list ----
+    const vocabBtn = document.getElementById('vocab-btn');
+    const vocabPanel = document.getElementById('vocab-panel');
+    const vocabList = document.getElementById('vocab-list');
+    const vocabClose = document.getElementById('vocab-close');
+    function getVocab() { try { return JSON.parse(localStorage.getItem('lingo.vocab') || '[]'); } catch (e) { return []; } }
+    function setVocab(v) { localStorage.setItem('lingo.vocab', JSON.stringify(v)); vocabBtn.textContent = `📒 単語帳 (${v.length})`; }
+    function hasVocab(word) { return getVocab().some((x) => x.word === word); }
+    function updateSaveBtn(word) {
+      const saved = hasVocab(word);
+      dictSave.classList.toggle('saved', saved);
+      dictSave.textContent = saved ? '★ 保存済み（クリックで削除）' : '★ 単語帳に保存';
+    }
+    dictSave.addEventListener('click', () => {
+      if (!dictCurrent) return;
+      const v = getVocab();
+      const i = v.findIndex((x) => x.word === dictCurrent.word);
+      if (i >= 0) v.splice(i, 1); else v.unshift({ word: dictCurrent.word, ja: dictCurrent.ja || '' });
+      setVocab(v);
+      updateSaveBtn(dictCurrent.word);
+      if (!vocabPanel.classList.contains('hidden')) renderVocab();
+    });
+    function renderVocab() {
+      const v = getVocab();
+      if (!v.length) { vocabList.innerHTML = '<div id="vocab-empty">まだ単語がありません。字幕の英単語をクリック →「単語帳に保存」で追加できます。</div>'; return; }
+      vocabList.innerHTML = '';
+      for (const it of v) {
+        const row = document.createElement('div');
+        row.className = 'vocab-item';
+        row.innerHTML = `<div><span class="vw">${escapeHtml(it.word)}</span> <span class="vj">${escapeHtml(it.ja || '')}</span></div><button class="vdel" title="削除">✕</button>`;
+        row.querySelector('.vdel').addEventListener('click', () => { setVocab(getVocab().filter((x) => x.word !== it.word)); renderVocab(); });
+        vocabList.appendChild(row);
+      }
+    }
+    vocabBtn.addEventListener('click', () => {
+      if (vocabPanel.classList.contains('hidden')) { renderVocab(); vocabPanel.classList.remove('hidden'); }
+      else vocabPanel.classList.add('hidden');
+    });
+    vocabClose.addEventListener('click', () => vocabPanel.classList.add('hidden'));
+    setVocab(getVocab());
+
+    function setStatus(msg, isError = false) {
+      statusEl.textContent = msg || '';
+      statusEl.classList.toggle('error', !!isError);
+    }
+
+    // Only touch the DOM when the rendered HTML actually changes. The poll runs
+    // every 200ms but the subtitle usually doesn't change between ticks; replacing
+    // innerHTML needlessly would cancel in-flight word clicks (mousedown/up land on
+    // different nodes), which is why the dictionary sometimes didn't open.
+    let lastEnHTML = null, lastJaHTML = null;
+    function setSubHtml(en, ja) {
+      if (en !== lastEnHTML) { subEn.innerHTML = en; lastEnHTML = en; }
+      if (ja !== lastJaHTML) { subJa.innerHTML = ja; lastJaHTML = ja; }
+    }
+
+    function clearSubtitles() { setSubHtml('', ''); }
+
+    function renderActiveCues(active, t) {
+      // Past tokens always disappear (per user requirement "読み終わった部分は消して").
+      // The toggle only controls whether the current token gets highlight styling.
+      const enHTML = active.map((c) => renderKaraoke(c.en, c, t, 'en')).filter(Boolean).join('<br>');
+      let jaHTML = active.map((c) => renderKaraoke(c.ja, c, t, 'ja')).filter(Boolean).join('<br>');
+      // If the line is showing but its Japanese is still streaming in, keep the
+      // two rows paired with a quiet placeholder instead of English floating alone.
+      if (!jaHTML && enHTML && active.some(jaStreamingIn)) {
+        jaHTML = '<span class="ka-pending">日本語訳を準備中…</span>';
+      }
+      const enPending = !enHTML && jaHTML && active.some(enStreamingIn);
+      setSubHtml(enPending ? '<span class="ka-pending">English loading…</span>' : enHTML, jaHTML);
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]);
+    }
+
+    function tokenizeForKaraoke(text) {
+      const tokens = [];
+      let buf = '';
+      for (const ch of text) {
+        if (/\s/.test(ch)) {
+          if (buf) { tokens.push(buf); buf = ''; }
+          tokens.push(ch);
+        } else if (/[぀-ヿ㐀-鿿ｦ-ￜ]/.test(ch)) {
+          if (buf) { tokens.push(buf); buf = ''; }
+          tokens.push(ch);
+        } else {
+          buf += ch;
+        }
+      }
+      if (buf) tokens.push(buf);
+      return tokens;
+    }
+
+    // Average comfortable reading speeds. Tokens/sec.
+    //   en: ~3.5 word/sec ≈ 200 WPM
+    //   ja: ~7 char/sec
+    const READING_TOKENS_PER_SEC = { en: 3.5, ja: 7, default: 4 };
+
+    function renderKaraoke(text, cue, t, lang) {
+      if (!text) return '';
+      const tokens = tokenizeForKaraoke(text);
+      const wordIdx = [];
+      tokens.forEach((tok, i) => { if (!/^\s+$/.test(tok)) wordIdx.push(i); });
+      if (!wordIdx.length) return '';
+
+      // Once the speaker has finished saying this cue, the line is done — clear
+      // it entirely so the read line disappears cleanly and the next cue takes
+      // over. The subtitle area is intentionally empty during gaps between cues
+      // (user requirement: "読まれた行は消えて、次の行に移ってほしい"). cue.end is the
+      // moment the speaker stops; displayEnd only keeps the cue "active" for
+      // gap-bridging, which we no longer want to use to keep the last word on.
+      const dur = Math.max(0.001, cue.end - cue.start);
+      const elapsed = Math.max(0, t - cue.start);
+      if (elapsed >= dur) return '';
+
+      // Two progress signals; the higher one wins so each word/char disappears as
+      // soon as EITHER (a) the speaker passed it or (b) the reader finished it at
+      // average pace. Clamp so the last token stays visible until the speaker
+      // actually finishes (handled by the early return above).
+      const speechProgress = Math.min(1, elapsed / dur);
+      const speed = READING_TOKENS_PER_SEC[lang] || READING_TOKENS_PER_SEC.default;
+      const readProgress = Math.min(1, (elapsed * speed) / wordIdx.length);
+      const maxProgress = (wordIdx.length - 1) / wordIdx.length;
+      const progress = Math.min(Math.max(speechProgress, readProgress), maxProgress);
+
+      const currentNth = Math.min(wordIdx.length - 1, Math.floor(progress * wordIdx.length));
+      const currentTokenIdx = wordIdx[currentNth];
+      // Highlight applies to English only; the Japanese line is never chipped.
+      const curClass = (highlightMode && lang === 'en') ? 'ka-current' : 'ka-current-plain';
+      // In word mode passed words vanish (ka-past); in line mode they stay (ka-future).
+      const pastClass = hideMode === 'line' ? 'ka-future' : 'ka-past';
+
+      // Emit one span per token so each English word is individually clickable
+      // for the dictionary (event-delegated on #sub-en).
+      let html = '';
+      for (let i = 0; i < tokens.length; i++) {
+        const tok = tokens[i];
+        if (/^\s+$/.test(tok)) { html += escHtml(tok); continue; }
+        const cls = i < currentTokenIdx ? pastClass : (i === currentTokenIdx ? curClass : 'ka-future');
+        if (lang === 'en' && /[A-Za-z]/.test(tok)) {
+          const w = tok.replace(/[^A-Za-z'-]+/g, '').toLowerCase();
+          html += `<span class="w ${cls}" data-w="${escHtml(w)}">${escHtml(tok)}</span>`;
+        } else {
+          html += `<span class="${cls}">${escHtml(tok)}</span>`;
+        }
+      }
+      return html;
+    }
+
+    function startPolling() {
+      stopPolling();
+      pollTimer = setInterval(() => {
+        if (!player || typeof player.getCurrentTime !== 'function') return;
+        const t = player.getCurrentTime();
+
+        // A/B repeat: jump back to A once playback passes B.
+        if (abActive() && t >= loopB) { try { player.seekTo(loopA, true); } catch (e) {} return; }
+
+        let active = findActiveCues(cues, t);
+        // Only ever show ONE line. YouTube auto-captions overlap (line A and the
+        // next line B are both "active" for a moment); the user does not want the
+        // previous line lingering as a second row. So when cues stack, show only
+        // the most recently started line that the speaker is still on — the new
+        // line takes over and the previous one disappears immediately.
+        if (active.length > 1) {
+          const live = active.filter((c) => t < c.end);
+          const pool = live.length ? live : active;
+          let pick = pool[0];
+          for (const c of pool) if (c.start > pick.start) pick = c;
+          active = [pick];
+        }
+        // Never pause for translation — keep playing. Show whatever is ready; if
+        // the Japanese is still streaming in, a quiet placeholder keeps the two
+        // rows paired and it's swapped for the real translation the instant it
+        // arrives (the backfill translates the playhead region first).
+        if (active.length) {
+          renderActiveCues(active, t);
+        } else {
+          clearSubtitles();
+        }
+      }, 200);
+    }
+
+    // True while one side is present but its partner is still being translated
+    // (hasn't been given up on after MAX_TRANSLATE_TRY attempts).
+    function jaStreamingIn(c) {
+      return c && c.en && !c.ja && (c._jafail || 0) < MAX_TRANSLATE_TRY;
+    }
+    function enStreamingIn(c) {
+      return c && c.ja && !c.en && (c._enfail || 0) < MAX_TRANSLATE_TRY;
+    }
+
+    function stopPolling() {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+    }
+
+    // Progressive playback: don't make the user wait for the whole transcript to
+    // be translated. Start playing once the opening (~first 8s) has both EN and
+    // JA ready; the rest keeps streaming in during playback (backfill translates
+    // the cues nearest the playhead first).
+    const OPENING_WINDOW = 8;
+    function openingReady() {
+      if (!cues.length) return false;
+      const t0 = cues[0].start;
+      const opening = cues.filter((c) => c.start < t0 + OPENING_WINDOW);
+      const check = opening.length ? opening : cues.slice(0, 3);
+      return check.every((c) => c.en && c.ja);
+    }
+    function maybeStartPlayback(force) {
+      if (autoPlayTriggered) return;
+      if (!player || typeof player.playVideo !== 'function') return;
+      if (!force && !openingReady()) return;
+      autoPlayTriggered = true;
+      if (autoPlayTimer) { clearTimeout(autoPlayTimer); autoPlayTimer = null; }
+      // Browsers may block unmuted autoplay; if so this is a no-op and the user
+      // simply presses play — subtitles/translations still stream regardless.
+      try { player.playVideo(); } catch (e) {}
+    }
+
+    function mountPlayer(videoId) {
+      playerWrap.innerHTML = '<div id="player"></div>';
+      if (player) { try { player.destroy(); } catch (e) {} player = null; }
+      player = new YT.Player('player', {
+        videoId,
+        // In-app: turn captions on so the player itself requests a pot-signed
+        // /api/timedtext, which the native layer captures (strategy 2).
+        playerVars: IN_APP
+          ? { rel: 0, modestbranding: 1, playsinline: 1, cc_load_policy: 1, cc_lang_pref: 'en' }
+          : { rel: 0, modestbranding: 1, playsinline: 1 },
+        events: {
+          onReady: () => {
+            if (playbackRate !== 1) { try { player.setPlaybackRate(playbackRate); } catch (e) {} }
+            startPolling();
+            maybeStartPlayback();
+            // Fallback: start within a couple seconds even if translation is slow.
+            autoPlayTimer = setTimeout(() => maybeStartPlayback(true), 2500);
+          },
+          onStateChange: (e) => {
+            if (e.data === YT.PlayerState.ENDED || e.data === YT.PlayerState.PAUSED) {
+              // keep current cue visible
+            }
+          },
+        },
+      });
+    }
+
+    function showResults() {
+      resultsEl.classList.remove('hidden');
+      playerWrap.classList.add('hidden');
+      clearSubtitles();
+    }
+
+    function hideResults() {
+      resultsEl.classList.add('hidden');
+      playerWrap.classList.remove('hidden');
+    }
+
+    function renderResults(items) {
+      resultsEl.innerHTML = '';
+      if (!items.length) {
+        const empty = document.createElement('div');
+        empty.style.gridColumn = '1 / -1';
+        empty.style.color = 'var(--dim)';
+        empty.style.textAlign = 'center';
+        empty.style.padding = '24px';
+        empty.textContent = 'ヒットなし';
+        resultsEl.appendChild(empty);
+        return;
+      }
+      for (const it of items) {
+        const card = document.createElement('div');
+        card.className = 'result-card';
+        card.innerHTML = `
+          <div class="result-thumb">
+            <img src="${escapeHtml(it.thumbnail)}" alt="" loading="lazy" />
+            ${it.duration ? `<div class="result-duration">${escapeHtml(it.duration)}</div>` : ''}
+          </div>
+          <div class="result-body">
+            <div class="result-title">${escapeHtml(it.title)}</div>
+            <div class="result-meta">${escapeHtml(it.channel)}${it.views ? ' · ' + escapeHtml(it.views) : ''}</div>
+            ${it.published ? `<div class="result-meta">🕒 ${escapeHtml(it.published)}</div>` : ''}
+          </div>
+        `;
+        card.addEventListener('click', () => loadByVideoId(it.videoId));
+        resultsEl.appendChild(card);
+      }
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]);
+    }
+
+    // YouTube rate-limits the Worker's datacenter IP intermittently (503). The
+    // block is usually momentary, so auto-retry with a visible countdown instead
+    // of making the user retry by hand. Bails out if a newer load supersedes it.
+    async function fetchTranscriptWithRetry(videoId, seq, maxRetries = 3) {
+      const waits = [12, 25, 40]; // seconds between auto-retries
+      for (let attempt = 0; ; attempt++) {
+        if (seq !== loadSeq) return null;
+        let res = null;
+        try { res = await fetch(`${WORKER_URL}/api/transcript?v=${videoId}`); }
+        catch (e) { if (attempt >= maxRetries) throw e; }
+        if (seq !== loadSeq) return null;
+        if (res && res.status !== 503) return res;
+        if (attempt >= maxRetries) return res;
+        const total = waits[Math.min(attempt, waits.length - 1)];
+        for (let s = total; s > 0; s--) {
+          if (seq !== loadSeq) return null;
+          setStatus(`YouTube制限中… ${s}秒後に自動で再試行します (${attempt + 1}/${maxRetries})`);
+          await sleep(1000);
+        }
+        setStatus('字幕を再取得中...');
+      }
+    }
+
+    async function loadByVideoId(videoId) {
+      const myLoad = ++loadSeq;
+      setStatus('字幕を取得中...');
+      showProgressIndeterminate();
+      loopA = loopB = null; updateAbUI();
+      dictPopup.classList.add('hidden');
+      autoPlayTriggered = false;
+      if (autoPlayTimer) { clearTimeout(autoPlayTimer); autoPlayTimer = null; }
+      loadBtn.disabled = true;
+      hideResults();
+      clearSubtitles();
+      cues = [];
+      // Mount the player right away so the video is watchable even while the
+      // captions are being fetched (or while a rate-limit auto-retry runs).
+      mountPlayer(videoId);
+      // Re-enable input immediately so a long auto-retry doesn't lock the UI —
+      // starting another load just bumps loadSeq and supersedes this one.
+      loadBtn.disabled = false;
+      let srcLang = 'en';
+
+      // Caption sources, best first:
+      //  1. Userscript helper — user's residential IP, every video (free, install once)
+      //  2. GAS proxy — Google IP, popular videos (zero-install)
+      // Both end with the browser fetching timedtext directly. Neither uses the
+      // Worker's blocked Cloudflare IP.
+      const usingHelper = helperPresent();
+      if (IN_APP) setStatus('字幕を取得中…（端末のIP経由）');
+      else if (usingHelper) setStatus('字幕を取得中…（あなたのIP経由）');
+      // In the app, the native path (residential IP, no CORS, player-capture) is
+      // the primary source; helper/GAS remain as web fallbacks.
+      const viaCaptions = (IN_APP && await fetchCuesViaNative(videoId))
+        || await fetchCuesViaHelper(videoId) || await fetchCuesViaGAS(videoId);
+      if (myLoad !== loadSeq) return;
+      if (viaCaptions && viaCaptions.cues && viaCaptions.cues.length) {
+        cues = viaCaptions.cues;
+        srcLang = viaCaptions.srcLang || 'en';
+        computeDisplayEnds(cues);
+        setStatus(`${cues.length} cues 読み込み済み`);
+        backfillMissingTranslations(cues, srcLang).catch(() => {});
+        return;
+      }
+      // A definite "no captions" only counts if the helper (residential, reliable)
+      // said so. GAS false-negatives fall through to the Worker instead.
+      if (usingHelper && viaCaptions && viaCaptions.error === 'no_captions') {
+        hideProgress();
+        setStatus('この動画には英字幕がありません', true);
+        return;
+      }
+      // Fallback: Worker transcript path (works for cached videos; may be rate-limited).
+      try {
+        const res = await fetchTranscriptWithRetry(videoId, myLoad);
+        if (myLoad !== loadSeq) return; // superseded by a newer load
+        if (!res) { hideProgress(); setStatus('字幕の取得に失敗しました。少し待って再試行してください', true); return; }
+        if (res.status === 404) {
+          hideProgress();
+          setStatus('この動画には英字幕がありません', true);
+          return;
+        }
+        if (res.status === 503) {
+          hideProgress();
+          setStatus('YouTube の制限が続いています。少し時間をおいて、もう一度読み込んでください', true);
+          return;
+        }
+        if (!res.ok) {
+          hideProgress();
+          setStatus('字幕の取得に失敗しました。少し待って再試行してください', true);
+          return;
+        }
+        const data = await res.json();
+        cues = data.cues || [];
+        srcLang = data?.lang?.from || 'en';
+        computeDisplayEnds(cues);
+        setStatus(`${cues.length} cues 読み込み済み`);
+      } catch (err) {
+        if (myLoad !== loadSeq) return;
+        hideProgress();
+        setStatus('字幕の取得に失敗しました。少し待って再試行してください', true);
+        return;
+      } finally {
+        loadBtn.disabled = false;
+      }
+
+      backfillMissingTranslations(cues, srcLang).catch(() => {});
+    }
+
+    const SEP = '\n\n␞\n\n';
+    const SEP_ENC_LEN = encodeURIComponent(SEP).length;
+    const LINGVA_BUDGET = 3000;
+    const MAX_TRANSLATE_TRY = 3;
+    const BATCH_MAX_CUES = 12;
+
+    async function backfillMissingTranslations(cuesArr, srcLang) {
+      const sides = [];
+      // Side ja: needed for any cue with empty ja
+      if (cuesArr.some((c) => !c.ja)) {
+        const srcFor = srcLang === 'ja' ? 'ja' : srcLang;
+        sides.push({ target: 'ja', from: srcFor, pickSrc: (c) => (srcFor === 'ja' ? c.ja : c.en || c.ja) || '' });
+      }
+      // Side en: needed for any cue with empty en (non-en source videos)
+      if (cuesArr.some((c) => !c.en)) {
+        const srcFor = srcLang === 'en' ? 'en' : srcLang;
+        sides.push({ target: 'en', from: srcFor, pickSrc: (c) => (srcFor === 'en' ? c.en : c.ja || c.en) || '' });
+      }
+      if (!sides.length) { hideProgress(); return; }
+
+      setStatus('字幕を逐次補完中...');
+      const need = {
+        ja: cuesArr.filter((c) => !c.ja).length,
+        en: cuesArr.filter((c) => !c.en).length,
+      };
+      const totalNeed = need.ja + need.en;
+      function report() {
+        const missJa = cuesArr.filter((c) => !c.ja).length;
+        const missEn = cuesArr.filter((c) => !c.en).length;
+        if (totalNeed) setProgress((totalNeed - (missJa + missEn)) / totalNeed);
+        const ja = need.ja ? `JA ${need.ja - missJa}/${need.ja}` : '';
+        const en = need.en ? `EN ${need.en - missEn}/${need.en}` : '';
+        setStatus(`字幕を逐次補完中... ${[ja, en].filter(Boolean).join(' / ')}`);
+      }
+
+      await Promise.all(sides.map((side) => backfillSideIncremental(cuesArr, side, report)));
+
+      hideProgress();
+      const remEn = cuesArr.filter((c) => !c.en).length;
+      const remJa = cuesArr.filter((c) => !c.ja).length;
+      if (remEn === 0 && remJa === 0) {
+        setStatus(`${cuesArr.length} cues 全て補完完了`);
+      } else {
+        setStatus(`補完完了 (EN欠損 ${remEn} / JA欠損 ${remJa})`, remEn + remJa > cuesArr.length / 4);
+      }
+    }
+
+    // Order untranslated cues so the region the user is about to watch is filled
+    // first: cues at/after the playhead come first (soonest start wins), already
+    // passed cues last. Re-evaluated before every batch so it keeps up with
+    // playback and seeks — the goal is EN+JA always ready ahead of the playhead.
+    function backfillPriority(cue, t) {
+      if (cue.end >= t) return Math.max(0, cue.start - t);   // current/upcoming
+      return (t - cue.end) + 1e6;                            // already passed
+    }
+
+    async function backfillSideIncremental(cuesArr, side, report) {
+      const fk = '_' + side.target + 'fail';
+      // Pending = still missing this side, has a usable source, and hasn't been
+      // given up on yet (failed fewer than MAX_TRANSLATE_TRY times).
+      const pending = () => {
+        const arr = [];
+        for (let i = 0; i < cuesArr.length; i++) {
+          const c = cuesArr[i];
+          if (!c[side.target] && side.pickSrc(c) && (c[fk] || 0) < MAX_TRANSLATE_TRY) arr.push(i);
+        }
+        return arr;
+      };
+      if (!pending().length) return;
+
+      while (true) {
+        const remaining = pending();
+        if (!remaining.length) break;
+
+        // Re-prioritize by the live playhead every batch so the region the user
+        // is watching (or about to) is translated first.
+        const t = (player && typeof player.getCurrentTime === 'function') ? player.getCurrentTime() : 0;
+        remaining.sort((a, b) => backfillPriority(cuesArr[a], t) - backfillPriority(cuesArr[b], t));
+
+        // Build a small batch from the front of the prioritized list. Cap the
+        // cue count (not just bytes) so each request returns fast and subtitles
+        // stream in near the playhead, rather than waiting on one big batch.
+        const idxBatch = [];
+        const srcBatch = [];
+        let bytes = 0;
+        for (const i of remaining) {
+          if (idxBatch.length >= BATCH_MAX_CUES) break;
+          const s = side.pickSrc(cuesArr[i]);
+          const sb = encodeURIComponent(s).length;
+          const sep = idxBatch.length ? SEP_ENC_LEN : 0;
+          if (idxBatch.length && bytes + sep + sb > LINGVA_BUDGET) break;
+          idxBatch.push(i); srcBatch.push(s); bytes += sep + sb;
+        }
+        if (!idxBatch.length) break;
+
+        const parts = await translateGroupViaWorker(srcBatch, side.from, side.target);
+        // The Worker runs on Cloudflare IPs that Google/MyMemory heavily rate-
+        // limit. For anything it couldn't translate, fall back to MyMemory
+        // directly from the browser — the user's own IP is not throttled the
+        // same way, so this fills reliably even when the Worker comes back empty.
+        const missIdx = [];
+        const missTexts = [];
+        for (let i = 0; i < srcBatch.length; i++) {
+          if (!parts[i] && srcBatch[i]) { missIdx.push(i); missTexts.push(srcBatch[i]); }
+        }
+        if (missTexts.length) {
+          const mm = await translateViaMyMemoryDirect(missTexts, side.from, side.target);
+          for (let k = 0; k < missIdx.length; k++) if (mm[k]) parts[missIdx[k]] = mm[k];
+        }
+        for (let i = 0; i < idxBatch.length; i++) {
+          const c = cuesArr[idxBatch[i]];
+          if (parts[i]) c[side.target] = parts[i];
+          else c[fk] = (c[fk] || 0) + 1; // retry up to MAX_TRANSLATE_TRY, then give up
+        }
+        report();
+        // Opening ready → start playback; the loop keeps streaming translations
+        // for the playhead region and onward in the background.
+        maybeStartPlayback();
+      }
+    }
+
+    // Translate via our Cloudflare Worker (Google Translate first, Lingva
+    // fallback) instead of hitting public Lingva instances from the browser —
+    // far more reliable and no CORS. Returns '' per item on failure so the
+    // caller's retry logic can re-attempt.
+    async function translateGroupViaWorker(group, from, to) {
+      try {
+        const res = await fetch(`${WORKER_URL}/api/translate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ texts: group, from, to }),
+        });
+        if (!res.ok) return group.map(() => '');
+        const data = await res.json();
+        const tl = Array.isArray(data?.translations) ? data.translations : [];
+        return group.map((_, i) => String(tl[i] ?? '').trim());
+      } catch (e) {
+        return group.map(() => '');
+      }
+    }
+
+    // Browser-side fallback. MyMemory is CORS-enabled and translates one text per
+    // request; called from the user's own (un-throttled) IP it fills reliably
+    // even when the Worker's datacenter IP is rate-limited. Modest concurrency.
+    async function translateViaMyMemoryDirect(texts, from, to) {
+      const out = new Array(texts.length).fill('');
+      let next = 0;
+      async function worker() {
+        while (true) {
+          const i = next++;
+          if (i >= texts.length) return;
+          const text = texts[i];
+          if (!text || !text.trim()) continue;
+          try {
+            const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${encodeURIComponent(from)}|${encodeURIComponent(to)}`;
+            const res = await fetch(url);
+            if (!res.ok) continue;
+            const body = await res.json();
+            const tl = body?.responseData?.translatedText || '';
+            if (tl && String(body?.responseStatus) === '200' && !/MYMEMORY WARNING|QUERY LENGTH LIMIT|INVALID/i.test(tl)) {
+              out[i] = tl.trim();
+            }
+          } catch (e) { /* leave '' so the caller can retry later */ }
+        }
+      }
+      await Promise.all(Array.from({ length: Math.min(4, texts.length) }, worker));
+      return out;
+    }
+
+    async function runSearch(query) {
+      setStatus('検索中...');
+      loadBtn.disabled = true;
+      try {
+        const sort = sortSelect.value || 'relevance';
+        // no-store: never reuse a stale browser-cached search response, so sort
+        // changes and fresh ordering always take effect (the Worker still serves
+        // repeat queries cheaply from its own KV cache).
+        const res = await fetch(`${WORKER_URL}/api/search?q=${encodeURIComponent(query)}&sort=${encodeURIComponent(sort)}`, { cache: 'no-store' });
+        if (res.status === 503) {
+          setStatus('YouTube が一時的に制限中です。数十秒待って再試行してください', true);
+          return;
+        }
+        if (!res.ok) {
+          setStatus('検索に失敗しました', true);
+          return;
+        }
+        const data = await res.json();
+        renderResults(data.results || []);
+        showResults();
+        setStatus(`${(data.results || []).length} 件ヒット`);
+      } catch (err) {
+        setStatus('検索に失敗しました', true);
+      } finally {
+        loadBtn.disabled = false;
+      }
+    }
+
+    async function submitInput() {
+      const raw = urlInput.value.trim();
+      if (!raw) return;
+      const videoId = extractVideoId(raw);
+      if (videoId) {
+        await loadByVideoId(videoId);
+      } else {
+        await runSearch(raw);
+      }
+    }
+
+    loadBtn.addEventListener('click', submitInput);
+    urlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitInput(); });
+
+    window.onYouTubeIframeAPIReady = () => { /* player mounted lazily on loadVideo */ };
+  </script>
+</body>
+</html>

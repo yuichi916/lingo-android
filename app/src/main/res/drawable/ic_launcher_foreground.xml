@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <!-- Simple "字A" bilingual glyph centered in the safe zone. -->
+    <group android:scaleX="1.0" android:scaleY="1.0">
+        <path android:fillColor="#7cc4ff"
+            android:pathData="M30,40 h22 v6 h-22 z M38,40 h6 v34 h-6 z M30,58 h22 v6 h-22 z M30,70 h22 v6 h-22 z" />
+        <path android:fillColor="#9affc4"
+            android:pathData="M68,72 l8,-30 h6 l8,30 h-6 l-1.6,-7 h-7.2 l-1.6,7 z M72.6,60 h4.8 l-2.4,-10 z" />
+    </group>
+</vector>
