@@ -855,28 +855,16 @@
     // Strategy 2: reuse the pot-signed /api/timedtext URL the real player itself
     // requested (captured natively). Rewrite its lang to English and fetch all of it.
     async function fetchCuesViaCapturedPlayer(videoId) {
-      // Provoke YouTube's own player into requesting its pot-signed timedtext by
-      // autoplaying a hidden, MUTED embed with captions forced on. The native
-      // shouldInterceptRequest records that signed URL. Decoupled from the main
-      // player so the app's "wait for cues before playing" gating can't deadlock it.
-      let iframe = null;
-      if (videoId) {
-        try {
-          iframe = document.createElement('iframe');
-          iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:320px;height:180px;opacity:0;border:0;pointer-events:none';
-          iframe.allow = 'autoplay; encrypted-media';
-          iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&cc_load_policy=1&cc_lang_pref=en&playsinline=1`;
-          document.body.appendChild(iframe);
-          dbg('capture: hidden muted embed injected; waiting for its timedtext…');
-        } catch (e) { dbg('capture: iframe inject failed ' + e); }
-      }
+      // The visible main player (driven by beginCaptionCapture in onReady) issues
+      // its own pot-signed /api/timedtext, which the native layer intercepts. Poll
+      // for that captured URL.
+      dbg('capture: waiting for main player timedtext…');
       let url = '';
       for (let i = 0; i < 50; i++) { // poll up to ~25s
         try { url = window.LingoNative.getCapturedTimedtextUrl(); } catch (e) { url = ''; }
         if (url) break;
         await new Promise((r) => setTimeout(r, 500));
       }
-      if (iframe) { try { iframe.remove(); } catch (e) {} }
       if (!url) { dbg('capture: player never requested timedtext (no URL in 25s)'); return null; }
       dbg('capture: got player URL (' + url.length + ' chars)');
       // Prefer an English variant of the same signed request.
@@ -966,6 +954,7 @@
     let pollTimer = null;
     let autoPlayTriggered = false;
     let autoPlayTimer = null;
+    let captureActive = false; // in-app: main player is muted-playing to provoke captions
     let loadSeq = 0; // bumped each load so a stale auto-retry can bail out
     const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const storedHl = localStorage.getItem('lingo.hl.v2');
@@ -1318,6 +1307,31 @@
       try { player.playVideo(); } catch (e) {}
     }
 
+    // In-app caption capture: the visible main player is muted-played with CC
+    // forced on so it issues its OWN pot-signed /api/timedtext request (which the
+    // native layer intercepts). A hidden/offscreen player gets throttled and never
+    // plays, so we must use the on-screen one. User-facing autoplay is deferred
+    // until capture ends, then we reset to the start, unmuted.
+    function beginCaptionCapture() {
+      captureActive = true;
+      dbg('capture: driving main player (mute+play+CC)…');
+      try { player.mute(); } catch (e) {}
+      try { player.playVideo(); } catch (e) {}
+      try { player.loadModule('captions'); } catch (e) {}
+      try { player.loadModule('cc'); } catch (e) {}
+      try { player.setOption('captions', 'track', { languageCode: 'en' }); } catch (e) {}
+    }
+    function endCaptionCapture() {
+      if (!captureActive) return;
+      captureActive = false;
+      try { player.pauseVideo(); } catch (e) {}
+      try { player.seekTo(0, true); } catch (e) {}
+      try { player.unMute(); } catch (e) {}
+      // Hand control back to the normal progressive-autoplay flow.
+      maybeStartPlayback();
+      autoPlayTimer = setTimeout(() => maybeStartPlayback(true), 2500);
+    }
+
     function mountPlayer(videoId) {
       playerWrap.innerHTML = '<div id="player"></div>';
       if (player) { try { player.destroy(); } catch (e) {} player = null; }
@@ -1326,15 +1340,20 @@
         // In-app: turn captions on so the player itself requests a pot-signed
         // /api/timedtext, which the native layer captures (strategy 2).
         playerVars: IN_APP
-          ? { rel: 0, modestbranding: 1, playsinline: 1, cc_load_policy: 1, cc_lang_pref: 'en' }
+          ? { rel: 0, modestbranding: 1, playsinline: 1, cc_load_policy: 1, cc_lang_pref: 'en', autoplay: 1, mute: 1 }
           : { rel: 0, modestbranding: 1, playsinline: 1 },
         events: {
           onReady: () => {
             if (playbackRate !== 1) { try { player.setPlaybackRate(playbackRate); } catch (e) {} }
             startPolling();
-            maybeStartPlayback();
-            // Fallback: start within a couple seconds even if translation is slow.
-            autoPlayTimer = setTimeout(() => maybeStartPlayback(true), 2500);
+            if (IN_APP) {
+              // Provoke the player's pot-signed caption request; defer user autoplay.
+              beginCaptionCapture();
+            } else {
+              maybeStartPlayback();
+              // Fallback: start within a couple seconds even if translation is slow.
+              autoPlayTimer = setTimeout(() => maybeStartPlayback(true), 2500);
+            }
           },
           onStateChange: (e) => {
             if (e.data === YT.PlayerState.ENDED || e.data === YT.PlayerState.PAUSED) {
@@ -1446,6 +1465,8 @@
       // the primary source; helper/GAS remain as web fallbacks.
       const viaCaptions = (IN_APP && await fetchCuesViaNative(videoId))
         || await fetchCuesViaHelper(videoId) || await fetchCuesViaGAS(videoId);
+      // Native capture (if used) drove the main player muted; restore normal UX.
+      if (IN_APP) endCaptionCapture();
       if (myLoad !== loadSeq) return;
       if (viaCaptions && viaCaptions.cues && viaCaptions.cues.length) {
         cues = viaCaptions.cues;
