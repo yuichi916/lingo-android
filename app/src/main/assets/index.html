@@ -863,9 +863,19 @@
       for (let i = 0; i < 50; i++) { // poll up to ~25s
         try { url = window.LingoNative.getCapturedTimedtextUrl(); } catch (e) { url = ''; }
         if (url) break;
+        if (i === 6 || i === 16 || i === 30) { // ~3s, 8s, 15s probes
+          let st = '?', t = '?';
+          try { st = player && player.getPlayerState ? player.getPlayerState() : '?'; } catch (e) {}
+          try { t = player && player.getCurrentTime ? player.getCurrentTime().toFixed(1) : '?'; } catch (e) {}
+          dbg('  probe: playerState=' + st + ' t=' + t + 's (1=playing)');
+        }
         await new Promise((r) => setTimeout(r, 500));
       }
-      if (!url) { dbg('capture: player never requested timedtext (no URL in 25s)'); return null; }
+      if (!url) {
+        dbg('capture: player never requested timedtext (no URL in 25s)');
+        try { dbg('native reqs seen:\n' + (window.LingoNative.getRequestLog() || '(none)')); } catch (e) {}
+        return null;
+      }
       dbg('capture: got player URL (' + url.length + ' chars)');
       // Prefer an English variant of the same signed request.
       const enUrl = url.replace(/([?&]lang=)[^&]*/i, '$1en');
@@ -886,6 +896,7 @@
       if (!IN_APP) return null;
       dbg('--- native fetch ' + videoId + ' ---');
       try { window.LingoNative.clearCapturedTimedtext(); } catch (e) {}
+      try { window.LingoNative.clearRequestLog(); } catch (e) {}
       const watch = await nativeHttpGet(
         `https://www.youtube.com/watch?v=${videoId}&hl=en&gl=US`,
         { 'Cookie': 'SOCS=CAI; CONSENT=YES+; PREF=hl=en&gl=US' }

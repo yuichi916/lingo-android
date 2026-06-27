@@ -41,6 +41,11 @@ class MainActivity : AppCompatActivity() {
     // Latest pot-signed timedtext URL observed from the real player (strategy 2).
     private val capturedTimedText = AtomicReference<String>("")
 
+    // Diagnostic: distinct interesting request paths the WebView (incl. the YT
+    // player iframe) issues — so we can see whether the player is actually
+    // streaming (videoplayback) and what caption endpoint it hits.
+    private val reqLog = java.util.Collections.synchronizedList(ArrayList<String>())
+
     // WebView UA: mobile, so the YouTube IFrame player plays inline.
     private val UA =
         "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) " +
@@ -86,8 +91,17 @@ class MainActivity : AppCompatActivity() {
                 val u = uri.toString()
                 // Record (but do not block) the player's own caption request — it
                 // carries a valid poToken the page can reuse for the full fetch.
-                if (u.contains("/api/timedtext")) {
+                if (u.contains("timedtext")) {
                     capturedTimedText.set(u)
+                }
+                // Diagnostic logging of interesting endpoints (path only, distinct).
+                if (u.contains("timedtext") || u.contains("/youtubei/") ||
+                    u.contains("videoplayback") || u.contains("caption") ||
+                    u.contains("get_video_info") || u.contains("/embed/")) {
+                    val short = u.substringBefore("?")
+                    synchronized(reqLog) {
+                        if (!reqLog.contains(short) && reqLog.size < 40) reqLog.add(short)
+                    }
                 }
                 return assetLoader.shouldInterceptRequest(uri)
             }
@@ -154,6 +168,12 @@ class MainActivity : AppCompatActivity() {
 
         @JavascriptInterface
         fun clearCapturedTimedtext() = capturedTimedText.set("")
+
+        @JavascriptInterface
+        fun getRequestLog(): String = synchronized(reqLog) { reqLog.joinToString("\n") }
+
+        @JavascriptInterface
+        fun clearRequestLog() { synchronized(reqLog) { reqLog.clear() } }
     }
 
     private fun applyHeaders(conn: HttpURLConnection, headersJson: String?) {
