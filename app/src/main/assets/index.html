@@ -774,6 +774,28 @@
     // is blocked from datacenter IPs and forbidden by CORS in a web page.
     // ====================================================================
     const IN_APP = typeof window.LingoNative !== 'undefined';
+    // On-screen diagnostics (app only). Tap the badge to show/hide the log.
+    let __dbgEl = null;
+    function dbg(msg) {
+      try {
+        if (!IN_APP) return;
+        if (!__dbgEl) {
+          __dbgEl = document.createElement('div');
+          __dbgEl.style.cssText = 'position:fixed;left:0;right:0;bottom:0;max-height:45vh;overflow:auto;z-index:99999;background:rgba(0,0,0,.85);color:#9affc4;font:11px/1.4 monospace;padding:6px 8px;white-space:pre-wrap;border-top:2px solid #7cc4ff';
+          const close = document.createElement('div');
+          close.textContent = '✕ diag';
+          close.style.cssText = 'position:sticky;top:0;float:right;color:#7cc4ff;cursor:pointer;font-weight:bold';
+          close.onclick = () => { __dbgEl.style.display = __dbgEl.style.display === 'none' ? 'block' : 'none'; };
+          __dbgEl.appendChild(close);
+          document.body.appendChild(__dbgEl);
+        }
+        const line = document.createElement('div');
+        line.textContent = msg;
+        __dbgEl.appendChild(line);
+        __dbgEl.scrollTop = __dbgEl.scrollHeight;
+      } catch (e) {}
+    }
+    if (IN_APP) { setTimeout(() => dbg('IN_APP=true bridge OK'), 300); }
     const __nativePending = new Map();
     window.__lingoResolveB64 = function (b64) {
       let obj;
@@ -813,8 +835,10 @@
       const tracks = captionTracks.map((t) => ({ lang: t.languageCode, kind: t.kind, baseUrl: t.baseUrl }));
       const pick = pickCaptionTrack(tracks);
       if (!pick || !pick.track.baseUrl) return { error: 'no_captions' };
+      dbg('direct: track=' + pick.track.lang + '/' + (pick.track.kind || 'manual'));
       const r = await nativeHttpGet(pick.track.baseUrl);
       let xml = r.ok ? r.body : '';
+      dbg('direct: timedtext status=' + r.status + ' bytes=' + (r.body ? r.body.length : 0));
       if (!xml || xml.length < 20) return null; // empty => likely poToken-gated; caller tries capture
       const raw = parseTimedTextXml(xml);
       if (!raw.length) return null;
@@ -832,10 +856,12 @@
         if (url) break;
         await new Promise((r) => setTimeout(r, 500));
       }
-      if (!url) return null;
+      if (!url) { dbg('capture: player never requested timedtext (no URL in 12s)'); return null; }
+      dbg('capture: got player URL (' + url.length + ' chars)');
       // Prefer an English variant of the same signed request.
       const enUrl = url.replace(/([?&]lang=)[^&]*/i, '$1en');
       let r = await nativeHttpGet(enUrl);
+      dbg('capture: en fetch status=' + r.status + ' bytes=' + (r.body ? r.body.length : 0));
       if (!r.ok || !r.body || r.body.length < 20) r = await nativeHttpGet(url); // fall back to as-captured
       if (!r.ok || !r.body) return null;
       const raw = parseTimedTextXml(r.body);
@@ -849,26 +875,31 @@
     // Full native caption path: direct watch-page -> timedtext, then player-capture.
     async function fetchCuesViaNative(videoId) {
       if (!IN_APP) return null;
+      dbg('--- native fetch ' + videoId + ' ---');
       try { window.LingoNative.clearCapturedTimedtext(); } catch (e) {}
       const watch = await nativeHttpGet(
         `https://www.youtube.com/watch?v=${videoId}&hl=en&gl=US`,
         { 'Cookie': 'SOCS=CAI; CONSENT=YES+; PREF=hl=en&gl=US' }
       );
+      dbg('watch: status=' + watch.status + ' bytes=' + (watch.body ? watch.body.length : 0));
       let direct = null;
       if (watch.ok && watch.body) {
         const pr = extractInlineJson(watch.body, 'ytInitialPlayerResponse');
         const tracks = pr && pr.captions && pr.captions.playerCaptionsTracklistRenderer
           && pr.captions.playerCaptionsTracklistRenderer.captionTracks;
+        dbg('watch: playerResp=' + (pr ? 'yes' : 'NO') + ' tracks=' + (Array.isArray(tracks) ? tracks.length : 'none'));
         if (Array.isArray(tracks)) {
           direct = await buildCuesNative(tracks);
-          if (direct && direct.cues && direct.cues.length) return direct;
+          if (direct && direct.cues && direct.cues.length) { dbg('DIRECT OK: ' + direct.cues.length + ' cues'); return direct; }
         }
       }
+      dbg('direct failed -> trying player-capture…');
       // Direct timedtext was empty/gated — use the player's own signed request.
       const captured = await fetchCuesViaCapturedPlayer();
-      if (captured && captured.cues && captured.cues.length) return captured;
+      if (captured && captured.cues && captured.cues.length) { dbg('CAPTURE OK: ' + captured.cues.length + ' cues'); return captured; }
       // If we positively know there are zero tracks, report no_captions.
-      if (direct && direct.error === 'no_captions') return { error: 'no_captions' };
+      if (direct && direct.error === 'no_captions') { dbg('result: no_captions'); return { error: 'no_captions' }; }
+      dbg('native FAILED (both paths) -> falling back to Worker');
       return null;
     }
 
