@@ -7,3 +7,4 @@ local.properties
 out/
 captures/
 .DS_Store
+.github/workflows/build-apk.yml
