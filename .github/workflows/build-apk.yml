@@ -5,6 +5,10 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
+# Allow the build to create/update the rolling "latest" release with the APK.
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
