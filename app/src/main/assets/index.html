@@ -446,12 +446,6 @@
     YouTube動画の<b>英語字幕</b>と<b>日本語訳</b>を同時に表示するリスニング学習ツールです。<br>
     読み終わった単語・行は自動で消えるので、今聞いている部分だけに集中できます。
   </p>
-  <div id="helper-hint" class="hidden">
-    💡 一部の動画で字幕が出ないときは、<b>字幕ヘルパー（無料）</b>を入れると全動画で出せます →
-    <a href="_userscript/lingo-helper.user.js" id="helper-link">字幕ヘルパーを導入</a>
-    <span class="dim">（先に <a href="https://violentmonkey.github.io/" target="_blank" rel="noopener">Violentmonkey</a> / Tampermonkey が必要）</span>
-  </div>
-  <div id="helper-ok" class="hidden">✅ 字幕ヘルパー有効 — 全動画で字幕取得できます</div>
   <div class="input-row">
     <input id="url-input" type="text" placeholder="YouTube URL or 検索キーワード" autocomplete="off" />
     <select id="sort-select" title="検索ソート (URLのときは無視)">
@@ -463,6 +457,11 @@
     <button id="load-btn">読み込む / 検索</button>
   </div>
   <div id="player-wrap"></div>
+  <div id="subtitles">
+    <div id="sub-en"></div>
+    <div id="sub-ja"></div>
+    <div id="sub-hint">英単語をタップ／クリックすると意味が出ます</div>
+  </div>
   <div id="controls-row">
     <div class="control-group">
       <span class="control-label">強調:</span>
@@ -497,11 +496,6 @@
     </div>
   </div>
   <div id="results" class="hidden"></div>
-  <div id="subtitles">
-    <div id="sub-en"></div>
-    <div id="sub-ja"></div>
-    <div id="sub-hint">英単語をタップ／クリックすると意味が出ます</div>
-  </div>
   <div id="dict-popup" class="hidden">
     <button id="dict-close" title="閉じる">✕</button>
     <div id="dict-word"></div>
@@ -519,6 +513,13 @@
   </div>
   <div id="progress" class="hidden"><div id="progress-bar"></div></div>
   <div id="status"></div>
+  <!-- Web-only subtitle-helper (userscript) notices — moved to the bottom; hidden in the app. -->
+  <div id="helper-hint" class="hidden">
+    💡 一部の動画で字幕が出ないときは、<b>字幕ヘルパー（無料）</b>を入れると全動画で出せます →
+    <a href="_userscript/lingo-helper.user.js" id="helper-link">字幕ヘルパーを導入</a>
+    <span class="dim">（先に <a href="https://violentmonkey.github.io/" target="_blank" rel="noopener">Violentmonkey</a> / Tampermonkey が必要）</span>
+  </div>
+  <div id="helper-ok" class="hidden">✅ 字幕ヘルパー有効 — 全動画で字幕取得できます</div>
   <section class="about">
     <h2>使い方</h2>
     <ol>
@@ -774,11 +775,12 @@
     // is blocked from datacenter IPs and forbidden by CORS in a web page.
     // ====================================================================
     const IN_APP = typeof window.LingoNative !== 'undefined';
-    // On-screen diagnostics (app only). Tap the badge to show/hide the log.
+    // On-screen diagnostics (app only). Flip DEBUG to true to show the panel.
+    const DEBUG = false;
     let __dbgEl = null;
     function dbg(msg) {
       try {
-        if (!IN_APP) return;
+        if (!IN_APP || !DEBUG) return;
         if (!__dbgEl) {
           __dbgEl = document.createElement('div');
           __dbgEl.style.cssText = 'position:fixed;left:0;right:0;bottom:0;max-height:45vh;overflow:auto;z-index:99999;background:rgba(0,0,0,.85);color:#9affc4;font:11px/1.4 monospace;padding:6px 8px;white-space:pre-wrap;border-top:2px solid #7cc4ff';
@@ -944,7 +946,10 @@
     }
 
     // Banner: helper installed → confirm; not installed → how to enable full coverage.
+    // In the app the userscript route is irrelevant (native capture covers every
+    // video), so we never surface these web-only banners.
     (function () {
+      if (IN_APP) return;
       const hint = document.getElementById('helper-hint');
       const ok = document.getElementById('helper-ok');
       if (helperPresent()) ok.classList.remove('hidden');
